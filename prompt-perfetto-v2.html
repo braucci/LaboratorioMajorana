@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il Prompt Perfetto — Laboratorio Digitale</title>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fafaf8;
+  --bg-code: #1e1e2e;
+  --bg-card: #ffffff;
+  --bg-step: #f0f4f8;
+  --accent: #1a56db;
+  --accent2: #7c3aed;
+  --accent3: #059669;
+  --text: #1e293b;
+  --text-dim: #64748b;
+  --text-code: #cdd6f4;
+  --border: #e2e8f0;
+  --yellow: #fef3c7;
+  --yellow-border: #f59e0b;
+  --green: #ecfdf5;
+  --green-border: #10b981;
+  --blue: #eff6ff;
+  --blue-border: #3b82f6;
+  --red: #fef2f2;
+  --red-border: #ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Literata', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+/* ===== LAYOUT ===== */
+.wrapper {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* ===== COVER ===== */
+.cover {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1a2744 100%);
+  color: #f8fafc;
+  padding: 80px 28px 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cover::after {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(circle at 70% 30%, rgba(56,189,248,0.08) 0%, transparent 50%),
+              radial-gradient(circle at 30% 70%, rgba(124,58,237,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.cover-inner { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; }
+.cover-badge {
+  display: inline-block;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #38bdf8;
+  border: 1px solid rgba(56,189,248,0.3);
+  padding: 6px 20px;
+  border-radius: 999px;
+  margin-bottom: 24px;
+}
+.cover h1 {
+  font-family: 'Literata', serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 16px;
+}
+.cover h1 em { font-style: italic; color: #38bdf8; }
+.cover p {
+  font-size: 15px;
+  color: #94a3b8;
+  line-height: 1.7;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+.cover .meta {
+  margin-top: 28px;
+  font-size: 13px;
+  color: #64748b;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* ===== TOC ===== */
+.toc {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin: 40px auto;
+  max-width: 780px;
+}
+.toc h2 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+.toc ol {
+  list-style: none;
+  counter-reset: toc-counter;
+  padding: 0;
+}
+.toc ol li {
+  counter-increment: toc-counter;
+  margin-bottom: 6px;
+}
+.toc ol li a {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14.5px;
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+.toc ol li a:hover { color: var(--accent); }
+.toc ol li a::before {
+  content: counter(toc-counter, decimal-leading-zero);
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 24px;
+}
+
+/* ===== SECTIONS ===== */
+section {
+  margin: 48px auto;
+  max-width: 780px;
+}
+section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+  padding-top: 20px;
+  border-top: 2px solid var(--accent);
+  display: inline-block;
+}
+section h2 .step-num {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+section h3 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 28px 0 10px;
+}
+section p { margin-bottom: 14px; }
+section ul, section ol { margin: 10px 0 18px 24px; }
+section li { margin-bottom: 6px; }
+
+/* ===== CODE BLOCKS ===== */
+pre {
+  background: var(--bg-code);
+  color: var(--text-code);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 20px 24px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 14px 0 20px;
+  border: 1px solid #313244;
+}
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88em;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #be185d;
+}
+pre code { background: none; padding: 0; color: inherit; }
+
+/* ===== PROMPT BLOCKS ===== */
+.prompt-block {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  color: #e0e7ff;
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin: 16px 0 22px;
+  position: relative;
+  border: 1px solid #4338ca;
+}
+.prompt-block::before {
+  content: 'PROMPT';
+  position: absolute;
+  top: -10px; left: 20px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #818cf8;
+  background: #1e1b4b;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid #4338ca;
+}
+.prompt-block p {
+  font-family: 'Literata', serif;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #e0e7ff;
+  margin-bottom: 0;
+}
+.prompt-block p + p { margin-top: 10px; }
+
+/* prompt con etichetta personalizzata */
+.prompt-block[data-label]::before { content: attr(data-label); }
+
+/* ===== TEMPLATE BLOCK (variante verde per template da copiare) ===== */
+.template-block {
+  background: linear-gradient(135deg, #052e16 0%, #064e3b 100%);
+  color: #d1fae5;
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin: 16px 0 22px;
+  position: relative;
+  border: 1px solid #059669;
+  cursor: copy;
+  transition: opacity 0.2s;
+}
+.template-block::before {
+  content: 'TEMPLATE — doppio clic per copiare';
+  position: absolute;
+  top: -10px; left: 20px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #34d399;
+  background: #052e16;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid #059669;
+}
+.template-block p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.85;
+  color: #d1fae5;
+  margin-bottom: 0;
+}
+.template-block .tl-key { font-weight: 700; }
+.template-block .k1 { color: #67e8f9; }
+.template-block .k2 { color: #fbbf24; }
+.template-block .k3 { color: #f8fafc; }
+.template-block .k4 { color: #fde68a; }
+.template-block .k5 { color: #86efac; }
+.template-block .k6 { color: #d8b4fe; }
+.template-block .k7 { color: #fca5a5; }
+.template-block .tl-val { color: #9ca3af; }
+
+/* flash copiato */
+@keyframes flash-copy {
+  0%   { outline: 3px solid #34d399; }
+  100% { outline: 3px solid transparent; }
+}
+.template-block.copied { animation: flash-copy 0.6s ease forwards; }
+
+/* ===== CALLOUT BOXES ===== */
+.callout {
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin: 18px 0;
+  font-size: 14.5px;
+  border-left: 4px solid;
+}
+.callout.tip     { background: var(--green);  border-color: var(--green-border); }
+.callout.warning { background: var(--yellow); border-color: var(--yellow-border); }
+.callout.info    { background: var(--blue);   border-color: var(--blue-border); }
+.callout.danger  { background: var(--red);    border-color: var(--red-border); }
+.callout .callout-title {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.callout.tip     .callout-title { color: var(--green-border); }
+.callout.warning .callout-title { color: #b45309; }
+.callout.info    .callout-title { color: var(--blue-border); }
+.callout.danger  .callout-title { color: var(--red-border); }
+
+/* ===== SUBSTEP CARDS ===== */
+.substep {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 14px 0;
+}
+.substep h4 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+/* ===== COMPONENTI GRID (6 card colorate) ===== */
+.comp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin: 18px 0 24px;
+}
+.comp-card {
+  border-radius: 10px;
+  padding: 18px 20px;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+}
+.comp-card::after {
+  content: attr(data-n);
+  position: absolute;
+  right: 10px; top: -6px;
+  font-family: 'Literata', serif;
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.07;
+  pointer-events: none;
+  color: var(--text);
+}
+.comp-card.c1 { background: #eff6ff; border-color: #bfdbfe; }
+.comp-card.c2 { background: #fff7ed; border-color: #fed7aa; }
+.comp-card.c3 { background: #fefce8; border-color: #fde68a; }
+.comp-card.c4 { background: #f0fdf4; border-color: #bbf7d0; }
+.comp-card.c5 { background: #f5f3ff; border-color: #ddd6fe; }
+.comp-card.c6 { background: #fff1f2; border-color: #fecdd3; }
+
+.comp-n {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.c1 .comp-n { color: #1d4ed8; }
+.c2 .comp-n { color: #c2410c; }
+.c3 .comp-n { color: #a16207; }
+.c4 .comp-n { color: #15803d; }
+.c5 .comp-n { color: #6d28d9; }
+.c6 .comp-n { color: #be123c; }
+
+.comp-title {
+  font-family: 'Literata', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.comp-q {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-bottom: 8px;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+.comp-desc {
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+.comp-ex {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 6px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ===== CONFRONTO BAD/GOOD ===== */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0 20px;
+}
+@media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
+
+.cmp-bad, .cmp-good {
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.cmp-bad  { background: var(--red);   border: 1px solid var(--red-border); }
+.cmp-good { background: var(--green); border: 1px solid var(--green-border); }
+
+.cmp-label {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.cmp-bad  .cmp-label { color: var(--red-border); }
+.cmp-good .cmp-label { color: var(--green-border); }
+
+.cmp-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  margin: 0;
+}
+.cmp-bad  .cmp-text { color: #991b1b; }
+.cmp-good .cmp-text { color: #065f46; }
+.cmp-note {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* ===== ANATOMIA RETROSPETTIVA ===== */
+.anatomy-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+  margin: 6px 0;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: background 0.15s;
+}
+.anatomy-row:hover { background: var(--blue); }
+.acomp {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 130px;
+  padding-top: 2px;
+}
+.acomp.c1 { color: #1d4ed8; }
+.acomp.c2 { color: #c2410c; }
+.acomp.c3 { color: #a16207; }
+.acomp.c4 { color: #15803d; }
+.acomp.c5 { color: #6d28d9; }
+.acomp.c6 { color: #be123c; }
+.atext {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* ===== CICLO ITERAZIONE ===== */
+.cycle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+.cycle-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 18px 14px;
+  text-align: center;
+  transition: box-shadow 0.2s;
+}
+.cycle-card:hover { box-shadow: 0 4px 16px rgba(26,86,219,0.12); }
+.cycle-icon { font-size: 1.5rem; display: block; margin-bottom: 8px; }
+.cycle-n {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.cycle-title {
+  font-family: 'Literata', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.cycle-desc {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  font-family: 'IBM Plex Sans', sans-serif;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ===== ERRORI GRID ===== */
+.errors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+.err-card {
+  background: var(--red);
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+.err-n {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--red-border);
+  margin-bottom: 6px;
+}
+.err-title {
+  font-family: 'Literata', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.err-bad {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #991b1b;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+.err-fix {
+  font-size: 13px;
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  border-left: 3px solid var(--green-border);
+  padding-left: 10px;
+  line-height: 1.55;
+}
+
+/* ===== QUICK REFERENCE ===== */
+.qr-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin: 20px 0;
+}
+.qr-label {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.pill {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.pill.p1 { color: #1d4ed8; border-color: #93c5fd; background: #eff6ff; }
+.pill.p2 { color: #c2410c; border-color: #fdba74; background: #fff7ed; }
+.pill.p3 { color: #a16207; border-color: #fcd34d; background: #fefce8; }
+.pill.p4 { color: #15803d; border-color: #86efac; background: #f0fdf4; }
+.pill.p5 { color: #6d28d9; border-color: #c4b5fd; background: #f5f3ff; }
+.pill.p6 { color: #be123c; border-color: #fda4af; background: #fff1f2; }
+.pill.perr { color: var(--red-border); border-color: #fca5a5; background: var(--red); }
+hr.qr-div { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ===== REFINE LIST ===== */
+.refine-list {
+  list-style: none;
+  margin: 10px 0 18px;
+}
+.refine-list li {
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  border-left: 4px solid;
+}
+.refine-list li:nth-child(1) { background: var(--yellow); border-color: var(--yellow-border); color: #78350f; }
+.refine-list li:nth-child(2) { background: var(--blue);   border-color: var(--blue-border);   color: #1e3a5f; }
+.refine-list li:nth-child(3) { background: var(--green);  border-color: var(--green-border);  color: #064e3b; }
+
+/* ===== FOOTER ===== */
+.doc-footer {
+  text-align: center;
+  padding: 40px 28px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  margin-top: 60px;
+}
+
+/* ===== PRINT ===== */
+@media print {
+  .cover { padding: 40px 20px 30px; }
+  pre { font-size: 11px; }
+  .prompt-block, .template-block { break-inside: avoid; }
+  section { break-before: auto; }
+}
+@media (max-width: 600px) {
+  .wrapper { padding: 0 16px; }
+  pre { font-size: 12px; padding: 14px 16px; }
+  .prompt-block, .template-block { padding: 18px 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<header class="cover">
+  <div class="cover-inner">
+    <div class="cover-badge">Laboratorio Digitale</div>
+    <h1>Il <em>Prompt Perfetto</em></h1>
+    <p>Guida operativa passo-passo: come costruire richieste precise all'IA per ottenere esattamente quello che vuoi — con esempi pratici di Costruzioni Aeronautiche.</p>
+    <div class="meta">Prof. Ing. Raucci Biagio — ITIS E. Majorana, Cassino<br>A.S. 2025/2026 — Costruzioni Aeronautiche</div>
+  </div>
+</header>
+
+<!-- ===================== TOC ===================== -->
+<nav class="toc wrapper">
+  <h2>Indice della Guida</h2>
+  <ol>
+    <li><a href="#s00">Perché i prompt falliscono</a></li>
+    <li><a href="#s01">Le 6 componenti di un prompt efficace</a></li>
+    <li><a href="#s02">Componente 1 — Il Ruolo</a></li>
+    <li><a href="#s03">Componente 2 — Il Contesto</a></li>
+    <li><a href="#s04">Componente 3 — I Parametri</a></li>
+    <li><a href="#s05">Componente 4 — Il Formato output</a></li>
+    <li><a href="#s06">Componente 5 — I Vincoli</a></li>
+    <li><a href="#s07">Componente 6 — Il Contesto extra</a></li>
+    <li><a href="#s08">Il template universale</a></li>
+    <li><a href="#s09">Esempio reale: dimensionamento longherone</a></li>
+    <li><a href="#s10">Esempio reale: web app NACA (Lezione 1)</a></li>
+    <li><a href="#s11">Iterazione e raffinamento</a></li>
+    <li><a href="#s12">I 6 errori più comuni</a></li>
+    <li><a href="#s13">Quick Reference — Scheda di studio</a></li>
+  </ol>
+</nav>
+
+<!-- ===================== CONTENT ===================== -->
+<div class="wrapper">
+
+<!-- ===== S00 ===== -->
+<section id="s00">
+  <h2><span class="step-num">Fase 0</span>Perché l'IA "non capisce" quello che vuoi?</h2>
+
+  <p>Il problema non è l'IA: è il <strong>prompt</strong>. L'intelligenza artificiale risponde esattamente a ciò che le chiedi, non a ciò che <em>intendi</em>. È un sistema che massimizza la coerenza con il tuo testo: se il testo è vago, il risultato sarà generico.</p>
+
+  <div class="callout info">
+    <div class="callout-title">🔧 Analogia tecnica</div>
+    <p>Un disegno tecnico ambiguo produce un pezzo sbagliato — anche con l'operatore CNC più bravo. <strong>Il prompt è il tuo disegno tecnico. L'IA è il tornio.</strong> Se il disegno manca di quote, tolleranze e specifiche del materiale, il risultato sarà errato. Con un disegno preciso, la macchina produce esattamente il pezzo richiesto.</p>
+  </div>
+
+  <div class="compare">
+    <div class="cmp-bad">
+      <p class="cmp-label">❌ Prompt scarso</p>
+      <p class="cmp-text">"Fammi qualcosa sui profili alari"</p>
+      <p class="cmp-note">Nessun formato · nessun contesto · nessun vincolo · nessun output definito</p>
+    </div>
+    <div class="cmp-good">
+      <p class="cmp-label">✅ Prompt preciso</p>
+      <p class="cmp-text">"Crea un file HTML singolo che disegna un profilo NACA 4 cifre con slider interattivi, usando le equazioni dalla dispensa allegata, senza librerie esterne"</p>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-title">💡 Regola d'oro</div>
+    <p>L'IA non legge la tua mente: legge il tuo testo. Ogni informazione aggiunta <strong>riduce l'incertezza</strong> e migliora il risultato. Un prompt è come una specifica di progetto: più è completo, meno sorprese ci sono in fase di esecuzione.</p>
+  </div>
+</section>
+
+<!-- ===== S01 ===== -->
+<section id="s01">
+  <h2><span class="step-num">Fase 1</span>Le 6 componenti di un prompt efficace</h2>
+
+  <p>Un prompt completo risponde sempre a queste sei domande — nell'ordine giusto. Non è necessario che siano tutte presenti ogni volta, ma ognuna che manca è un'opportunità persa di precisione.</p>
+
+  <div class="comp-grid">
+    <div class="comp-card c1" data-n="1">
+      <p class="comp-n">Componente 01</p>
+      <p class="comp-title">🎯 Ruolo</p>
+      <p class="comp-q">Chi sei?</p>
+      <p class="comp-desc">Definisci l'identità esperta dell'IA. Attiva il «modo esperto» giusto per il tuo dominio tecnico.</p>
+      <div class="comp-ex">"Sei un ingegnere aerostrutturista con 20 anni di esperienza su velivoli FAR-23"</div>
+    </div>
+    <div class="comp-card c2" data-n="2">
+      <p class="comp-n">Componente 02</p>
+      <p class="comp-title">📋 Contesto</p>
+      <p class="comp-q">Qual è la situazione?</p>
+      <p class="comp-desc">Descrivi il quadro tecnico: cosa stai facendo, a quale livello, per quale scopo.</p>
+      <div class="comp-ex">"Sto analizzando le sollecitazioni su un longherone in alluminio 2024-T3"</div>
+    </div>
+    <div class="comp-card c3" data-n="3">
+      <p class="comp-n">Componente 03</p>
+      <p class="comp-title">🎚️ Parametri</p>
+      <p class="comp-q">Quali dati hai?</p>
+      <p class="comp-desc">Fornisci valori numerici precisi <strong>con le unità di misura</strong>. Vago = generico. Numerico = calcolato.</p>
+      <div class="comp-ex">"Apertura alare 8.4 m, carico limite 3.8g, t = 0.12 c"</div>
+    </div>
+    <div class="comp-card c4" data-n="4">
+      <p class="comp-n">Componente 04</p>
+      <p class="comp-title">📐 Formato output</p>
+      <p class="comp-q">Come deve risponderti?</p>
+      <p class="comp-desc">Specifica lingua, lunghezza, struttura. Codice, tabella, lista, formula, spiegazione.</p>
+      <div class="comp-ex">"Rispondi in italiano con codice Python commentato. Max 80 righe."</div>
+    </div>
+    <div class="comp-card c5" data-n="5">
+      <p class="comp-n">Componente 05</p>
+      <p class="comp-title">⚠️ Vincoli</p>
+      <p class="comp-q">Cosa NON deve fare?</p>
+      <p class="comp-desc">Escludi librerie, metodi, approcci indesiderati. I vincoli negativi espliciti sono potentissimi.</p>
+      <div class="comp-ex">"Senza librerie esterne. Solo HTML/CSS/JS puro. NON usare jQuery."</div>
+    </div>
+    <div class="comp-card c6" data-n="6">
+      <p class="comp-n">Componente 06</p>
+      <p class="comp-title">📎 Contesto extra</p>
+      <p class="comp-q">Hai documenti di riferimento?</p>
+      <p class="comp-desc">Allega o trascrivi formule, tabelle, norme, codice esistente. È la componente che fa la differenza.</p>
+      <div class="comp-ex">"Usa l'eq. dalla dispensa: y_t = (t/0.20)·[0.2969√x…]"</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S02 ===== -->
+<section id="s02">
+  <h2><span class="step-num">Fase 2</span>Componente 1 — Il Ruolo</h2>
+
+  <p>La prima parola del prompt stabilisce <em>chi risponde</em>. Un ruolo preciso attiva le conoscenze disciplinari giuste e calibra il tono e il livello di dettaglio della risposta. Scrivere "Sei un assistente" è inutile: l'IA lo è già. Serve un ruolo <strong>specifico e contestualizzato</strong>.</p>
+
+  <h3>2.1 — Confronti pratici</h3>
+
+  <div class="compare">
+    <div class="cmp-bad"><p class="cmp-label">❌ Vago</p><p class="cmp-text">"Sei un assistente"</p></div>
+    <div class="cmp-good"><p class="cmp-label">✅ Preciso</p><p class="cmp-text">"Sei un ingegnere aerostrutturista con 20 anni di esperienza su velivoli certificati FAR-23"</p></div>
+  </div>
+  <div class="compare">
+    <div class="cmp-bad"><p class="cmp-label">❌ Vago</p><p class="cmp-text">"Aiutami con il codice"</p></div>
+    <div class="cmp-good"><p class="cmp-label">✅ Preciso</p><p class="cmp-text">"Sei un programmatore Python specializzato in calcolo scientifico per applicazioni aeronautiche"</p></div>
+  </div>
+  <div class="compare">
+    <div class="cmp-bad"><p class="cmp-label">❌ Vago</p><p class="cmp-text">"Spiega questo concetto"</p></div>
+    <div class="cmp-good"><p class="cmp-label">✅ Preciso</p><p class="cmp-text">"Sei un professore di costruzioni aeronautiche che spiega a studenti di 4° anno ITIS, usando esempi su velivoli reali"</p></div>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">💡 Trucco</div>
+    <p>Più il ruolo rispecchia il tipo di risposta che vuoi, più l'output sarà calibrato. Per un calcolo strutturale usa il ruolo da ingegnere. Per spiegare la fisica a un novizio, usa il ruolo da professore che semplifica con analogie.</p>
+  </div>
+</section>
+
+<!-- ===== S03 ===== -->
+<section id="s03">
+  <h2><span class="step-num">Fase 3</span>Componente 2 — Il Contesto</h2>
+
+  <p>Il contesto risponde a <em>dove, quando, per chi</em>. Senza contesto, l'IA produce una risposta valida per tutti — ma utile per nessuno in particolare.</p>
+
+  <h3>3.1 — Le 4 dimensioni del contesto</h3>
+  <ol>
+    <li><strong>Disciplina</strong> — "Nel contesto delle costruzioni aeronautiche…"</li>
+    <li><strong>Livello del destinatario</strong> — "…per studenti di 4° anno ITIS che non conoscono Python"</li>
+    <li><strong>Scopo</strong> — "…per calcolare il fattore di sicurezza ultimo su un longherone"</li>
+    <li><strong>Vincoli HW/SW</strong> — "…su Windows 11, senza installare nulla, solo il browser"</li>
+  </ol>
+
+  <div class="callout danger">
+    <div class="callout-title">⚠️ Errore frequente</div>
+    <p>Saltare il contesto porta l'IA a indovinare. Se stai chiedendo un calcolo FAR Part 23 senza dirlo, l'IA potrebbe rispondere secondo FAR Part 25 (velivoli di linea) — tecnicamente corretta, ma inapplicabile al tuo caso.</p>
+  </div>
+
+  <h3>3.2 — Esempio combinato Ruolo + Contesto</h3>
+
+  <div class="template-block" data-label="ESEMPIO">
+    <p>
+      <span class="tl-key k1">[RUOLO]</span> <span class="tl-val">Sei un ingegnere strutturista aeronautico.</span><br>
+      <span class="tl-key k2">[CONTESTO]</span> <span class="tl-val">Sto dimensionando il longherone principale di un aliante biposto in fibra di carbonio. Il destinatario è uno studente di costruzioni aeronautiche (4° anno ITIS).</span><br>
+      <span class="tl-key k3">[COMPITO]</span> <span class="tl-val">Spiega il criterio di resistenza di Tsai-Wu per laminati in composito.</span>
+    </p>
+  </div>
+</section>
+
+<!-- ===== S04 ===== -->
+<section id="s04">
+  <h2><span class="step-num">Fase 4</span>Componente 3 — I Parametri</h2>
+
+  <p>Questa è la componente che distingue una risposta <em>generica</em> da una <em>calcolata</em>. I dati numerici con le unità di misura permettono all'IA di fare la matematica vera, non stime vaghe.</p>
+
+  <div class="callout danger">
+    <div class="callout-title">⚠️ Critico: le unità di misura</div>
+    <p>Scrivere <code>"la corda è 1.2 e il carico è 3800"</code> è un errore tecnico grave. L'IA non sa se 3800 è in Newton, kg-forza o libbre. Scrivi sempre: <code>"corda c = 1.2 m"</code>, <code>"carico L = 3800 N"</code>. La differenza tra N e kgf vale il fattore g = 9.81 — rilevante in ogni verifica strutturale.</p>
+  </div>
+
+  <h3>4.1 — Confronti pratici</h3>
+
+  <div class="compare">
+    <div class="cmp-bad"><p class="cmp-label">❌ Vago</p><p class="cmp-text">"un profilo abbastanza spesso"</p></div>
+    <div class="cmp-good"><p class="cmp-label">✅ Preciso</p><p class="cmp-text">"NACA 2412: m=0.02, p=0.4, t=0.12<br>corda c = 1.2 m, apertura b = 9.6 m"</p></div>
+  </div>
+  <div class="compare">
+    <div class="cmp-bad"><p class="cmp-label">❌ Vago</p><p class="cmp-text">"carichi non troppo alti"</p></div>
+    <div class="cmp-good"><p class="cmp-label">✅ Preciso</p><p class="cmp-text">"fattore di carico limite n = +3.8 / −1.52<br>(FAR Part 23, categoria normale)"</p></div>
+  </div>
+  <div class="compare">
+    <div class="cmp-bad"><p class="cmp-label">❌ Vago</p><p class="cmp-text">"materiale leggero"</p></div>
+    <div class="cmp-good"><p class="cmp-label">✅ Preciso</p><p class="cmp-text">"alluminio 2024-T3: E = 73 GPa<br>σ_ult = 483 MPa, σ_snervamento = 345 MPa"</p></div>
+  </div>
+</section>
+
+<!-- ===== S05 ===== -->
+<section id="s05">
+  <h2><span class="step-num">Fase 5</span>Componente 4 — Il Formato output</h2>
+
+  <p>Senza formato specificato, l'IA sceglie da sola — e raramente indovina esattamente quello che ti serve. Sii esplicito su <em>come</em> vuoi che risponda, non solo <em>cosa</em> vuoi.</p>
+
+  <h3>5.1 — Formati tipici per costruzioni aeronautiche</h3>
+
+  <div class="substep">
+    <h4>Codice Python</h4>
+    <p>"Scrivi in Python 3.11, funzioni commentate in italiano, nessuna libreria esterna. Max 80 righe."</p>
+  </div>
+
+  <div class="substep">
+    <h4>File HTML singolo</h4>
+    <p>"Un unico file <code>index.html</code> con CSS e JavaScript integrati, tema scuro, zero dipendenze esterne."</p>
+  </div>
+
+  <div class="substep">
+    <h4>Tabella di risultati</h4>
+    <p>"Presenta i risultati in una tabella con colonne: x, y_superiore, y_inferiore, y_c — 21 righe da x=0 a x=1."</p>
+  </div>
+
+  <div class="substep">
+    <h4>Spiegazione didattica</h4>
+    <p>"Spiega in italiano semplice, max 10 righe, livello liceo tecnico, con almeno un esempio pratico su un velivolo reale."</p>
+  </div>
+
+  <div class="substep">
+    <h4>Formati doppi</h4>
+    <p>"Prima spiega il concetto in 5 righe, poi scrivi il codice Python che lo implementa." — L'IA seguirà la sequenza.</p>
+  </div>
+</section>
+
+<!-- ===== S06 ===== -->
+<section id="s06">
+  <h2><span class="step-num">Fase 6</span>Componente 5 — I Vincoli</h2>
+
+  <p>I vincoli sono istruzioni in forma negativa: <em>cosa NON fare</em>. Sono fondamentali perché l'IA, senza vincoli, tende a dare la risposta più completa possibile — che spesso è più di quello che ti serve, o usa strumenti che non puoi usare.</p>
+
+  <h3>6.1 — Tipi di vincoli con esempi</h3>
+  <ul>
+    <li><strong>Tecnologici</strong> — "Zero librerie esterne. Solo HTML, CSS, JavaScript vanilla."</li>
+    <li><strong>Dimensionali</strong> — "Max 100 righe di codice. Una sola funzione principale."</li>
+    <li><strong>Di contenuto</strong> — "Non usare matplotlib. Usa solo SVG inline."</li>
+    <li><strong>Normativi</strong> — "Applica FAR Part 23 — non FAR Part 25."</li>
+    <li><strong>Di lingua</strong> — "Rispondi SOLO in italiano. Nessuna parola in inglese nel codice."</li>
+  </ul>
+
+  <div class="callout tip">
+    <div class="callout-title">⚡ Trucco avanzato — vincoli negativi espliciti</div>
+    <p>Usa la parola <strong>NON</strong> in maiuscolo per rafforzare un vincolo. Esempio efficace:</p>
+  </div>
+
+  <div class="prompt-block" data-label="ESEMPIO VINCOLI">
+    <p>NON aggiungere commenti ovvi al codice.<br>
+    NON usare jQuery o Bootstrap.<br>
+    NON scrivere commenti in inglese.<br>
+    NON superare le 80 righe di codice totale.</p>
+  </div>
+</section>
+
+<!-- ===== S07 ===== -->
+<section id="s07">
+  <h2><span class="step-num">Fase 7</span>Componente 6 — Il Contesto extra</h2>
+
+  <p>Questa è spesso la componente che fa la differenza tra un output buono e uno <em>preciso come ti serve</em>. Allega o trascrivi i riferimenti tecnici che l'IA deve usare come fonte autorevole.</p>
+
+  <h3>7.1 — Cosa puoi allegare o citare</h3>
+  <ol>
+    <li><strong>Dispensa / PDF</strong> — "Usa le formule nella pagina 3 della dispensa allegata." <em>(allega il PDF nella chat di Claude)</em></li>
+    <li><strong>Equazioni esplicite</strong> — Trascrivi direttamente la formula nel prompt, es. <code>y_t = (t/0.20)·[0.2969√x − 0.1260x − 0.3516x² + 0.2843x³ − 0.1015x⁴]</code></li>
+    <li><strong>Tabella dati sperimentali</strong> — "I dati sono: x=0.0, Cp=−0.42; x=0.1, Cp=−0.31; …"</li>
+    <li><strong>Codice esistente</strong> — "Partendo da questo codice, aggiungi la funzione che calcola…" <em>(incolla il codice)</em></li>
+    <li><strong>Norma tecnica</strong> — "Applica la norma CS-VLA, Art. 337: fattori di carico in manovra."</li>
+  </ol>
+
+  <div class="callout tip">
+    <div class="callout-title">✅ Perché funziona</div>
+    <p>Quando fornisci le equazioni direttamente nel prompt, l'IA le implementa <strong>esattamente come scritte</strong>, senza inventare coefficienti o approssimare. È il motivo per cui il prompt della Lezione 1 ha prodotto il calcolo NACA corretto al quarto decimale.</p>
+  </div>
+</section>
+
+<!-- ===== S08 ===== -->
+<section id="s08">
+  <h2><span class="step-num">Fase 8</span>Il template universale</h2>
+
+  <p>Usa questa struttura per ogni prompt che scrivi. Sostituisci i segnaposto tra parentesi quadre con i tuoi dati tecnici. Doppio clic sul riquadro verde per copiarlo negli appunti.</p>
+
+  <div class="template-block" id="template-main">
+    <p>
+      <span class="tl-key k1">[RUOLO]</span> <span class="tl-val">Sei un ingegnere aerostrutturista / programmatore Python / professore di costruzioni aeronautiche.</span><br><br>
+      <span class="tl-key k2">[CONTESTO]</span> <span class="tl-val">Sto lavorando su [descrizione progetto]. Il livello del destinatario è [principiante / esperto].</span><br><br>
+      <span class="tl-key k3">[COMPITO]</span> <span class="tl-val">Devo ottenere [descrizione precisa del risultato atteso].</span><br><br>
+      <span class="tl-key k4">[PARAMETRI]</span> <span class="tl-val">I dati tecnici sono: [lista valori numerici con unità di misura].</span><br>
+      <span class="tl-key k4">[EQUAZIONI / NORME]</span> <span class="tl-val">Usa le seguenti equazioni: [formule esplicite]. Norma: [FAR/CS/altra].</span><br><br>
+      <span class="tl-key k5">[FORMATO OUTPUT]</span> <span class="tl-val">Rispondi in [italiano]. Il formato deve essere [codice / tabella / lista / spiegazione].</span><br><br>
+      <span class="tl-key k6">[VINCOLI]</span> <span class="tl-val">NON usare [librerie/metodi da evitare]. Lunghezza massima: [N righe/parole].</span><br><br>
+      <span class="tl-key k7">[VERIFICA]</span> <span class="tl-val">Alla fine verifica che [condizione di controllo, es: il codice giri senza errori].</span>
+    </p>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-title">⚡ Template in una riga</div>
+    <p><em>"[RUOLO]. Sto [CONTESTO]. Ho bisogno di [COMPITO]. I parametri sono [PARAMETRI con unità]. Rispondi in [FORMATO]. NON usare [VINCOLI]. Usa le formule: [EXTRA]."</em></p>
+  </div>
+</section>
+
+<!-- ===== S09 ===== -->
+<section id="s09">
+  <h2><span class="step-num">Fase 9</span>Esempio reale n.1 — Dimensionamento longherone</h2>
+
+  <p>Un prompt professionale per un problema tipico di Costruzioni Aeronautiche. Tutte e 6 le componenti sono presenti e identificabili. Doppio clic per copiarlo.</p>
+
+  <div class="template-block">
+    <p>
+      <span class="tl-key k1">[RUOLO]</span> <span class="tl-val">Sei un ingegnere strutturista aeronautico esperto in analisi di travi e strutture alari.</span><br><br>
+      <span class="tl-key k2">[CONTESTO]</span> <span class="tl-val">Sto dimensionando il longherone principale di un aliante biposto. Il destinatario è uno studente di costruzioni aeronautiche (4° anno ITIS).</span><br><br>
+      <span class="tl-key k3">[COMPITO]</span> <span class="tl-val">Calcola il momento flettente massimo e verifica la sezione a cassone rispetto alla resistenza del materiale.</span><br><br>
+      <span class="tl-key k4">[PARAMETRI]</span> <span class="tl-val">Apertura alare b = 18 m, portanza totale L = 9810 N, distribuzione ellittica.</span><br>
+      <span class="tl-key k4">[MATERIALE]</span> <span class="tl-val">Alluminio 2024-T3: E = 73 GPa, σ_ult = 483 MPa, σ_snervamento = 345 MPa.</span><br><br>
+      <span class="tl-key k5">[FORMATO]</span> <span class="tl-val">Prima mostra i passaggi passo-passo in italiano. Poi scrivi il codice Python 3 che esegue il calcolo.</span><br><br>
+      <span class="tl-key k6">[VINCOLI]</span> <span class="tl-val">Applica FAR Part 23, categoria normale. Coefficiente di sicurezza ultimo j = 1.5. Solo numpy.</span><br><br>
+      <span class="tl-key k7">[VERIFICA]</span> <span class="tl-val">Controlla che σ_max &lt; σ_snervamento / j con margine di sicurezza MS &gt; 0.</span>
+    </p>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">✅ Perché questo prompt funziona</div>
+    <p>Ruolo esperto calibrato al problema strutturale · dati numerici con unità SI · norma di riferimento esplicita (FAR Part 23) · formato doppio (spiegazione + codice) · condizione di verifica finale che l'IA deve controllare autonomamente.</p>
+  </div>
+</section>
+
+<!-- ===== S10 ===== -->
+<section id="s10">
+  <h2><span class="step-num">Fase 10</span>Esempio reale n.2 — Web App NACA (Lezione 1)</h2>
+
+  <p>Il prompt usato nella Lezione 1, scomposto nelle 6 componenti. Riconoscerle in un prompt già usato aiuta a interiorizzare la struttura.</p>
+
+  <div class="anatomy-row"><span class="acomp c1">1 · RUOLO</span><span class="atext">(implicito) — avremmo potuto scrivere: "Sei un programmatore HTML/JS specializzato in applicazioni scientifiche"</span></div>
+  <div class="anatomy-row"><span class="acomp c2">2 · CONTESTO</span><span class="atext">"web app in un singolo file HTML per disegnare profili alari NACA a 4 cifre"</span></div>
+  <div class="anatomy-row"><span class="acomp c3">3 · PARAMETRI</span><span class="atext">"slider m (0÷9), p (1÷9), t (1÷40)" — range precisi con significato fisico esplicitato</span></div>
+  <div class="anatomy-row"><span class="acomp c4">4 · FORMATO</span><span class="atext">"singolo file HTML — canvas SVG — tabella 21 punti x, y_sup, y_inf"</span></div>
+  <div class="anatomy-row"><span class="acomp c5">5 · VINCOLI</span><span class="atext">"Zero librerie esterne. Tutto in un solo index.html" — vincolo tecnologico esplicito</span></div>
+  <div class="anatomy-row"><span class="acomp c6">6 · EXTRA</span><span class="atext">Equazioni NACA trascritte nel prompt: y_t = (t/0.20)·[0.2969√x − 0.1260x − 0.3516x² + 0.2843x³ − 0.1015x⁴]</span></div>
+
+  <div class="callout info">
+    <div class="callout-title">💡 La chiave del risultato preciso</div>
+    <p>Il fatto che la componente 6 contenesse le equazioni esatte dalla dispensa è il motivo per cui l'IA ha implementato correttamente il polinomio NACA al quarto decimale. Senza quelle equazioni, avrebbe potuto usare approssimazioni diverse da quelle del corso.</p>
+  </div>
+</section>
+
+<!-- ===== S11 ===== -->
+<section id="s11">
+  <h2><span class="step-num">Fase 11</span>Iterazione e raffinamento</h2>
+
+  <p>Raramente il primo prompt è perfetto. Il ciclo di raffinamento — scrivi, osserva, correggi — è la vera competenza da sviluppare. L'IA conserva il contesto dell'intera conversazione: ogni messaggio successivo si aggiunge al contesto dei precedenti.</p>
+
+  <div class="cycle-grid">
+    <div class="cycle-card">
+      <span class="cycle-icon">📝</span>
+      <p class="cycle-n">Passo 01</p>
+      <p class="cycle-title">Primo prompt</p>
+      <p class="cycle-desc">Usa il template. Sii preciso su parametri e formato atteso.</p>
+    </div>
+    <div class="cycle-card">
+      <span class="cycle-icon">🔍</span>
+      <p class="cycle-n">Passo 02</p>
+      <p class="cycle-title">Analizza</p>
+      <p class="cycle-desc">Il risultato è corretto? Manca qualcosa? C'è un errore tecnico?</p>
+    </div>
+    <div class="cycle-card">
+      <span class="cycle-icon">🔧</span>
+      <p class="cycle-n">Passo 03</p>
+      <p class="cycle-title">Raffina</p>
+      <p class="cycle-desc">Aggiungi il vincolo mancante o correggi il parametro errato.</p>
+    </div>
+    <div class="cycle-card">
+      <span class="cycle-icon">✅</span>
+      <p class="cycle-n">Passo 04</p>
+      <p class="cycle-title">Risultato</p>
+      <p class="cycle-desc">Output tecnico corretto, pronto per il deploy o la consegna.</p>
+    </div>
+  </div>
+
+  <h3>11.1 — Frasi di raffinamento utili</h3>
+
+  <ul class="refine-list">
+    <li>"Il codice ha un errore alla riga 47: [incolla l'errore esatto]. Correggilo senza modificare il resto."</li>
+    <li>"Il risultato è corretto MA aggiungi anche il grafico della distribuzione di pressione, con lo stesso stile visivo."</li>
+    <li>"Riscrivi SOLO la funzione calcProfile() in modo più efficiente. Il resto del codice non va toccato."</li>
+  </ul>
+
+  <div class="callout warning">
+    <div class="callout-title">Regola d'oro del raffinamento</div>
+    <p>Non accettate mai il primo output senza verificarlo. L'IA è potente ma non infallibile: le formule, le definizioni e i ragionamenti vanno sempre controllati con il materiale originale del docente. <strong>La responsabilità della correttezza è vostra.</strong></p>
+  </div>
+</section>
+
+<!-- ===== S12 ===== -->
+<section id="s12">
+  <h2><span class="step-num">Fase 12</span>I 6 errori più comuni nei prompt</h2>
+
+  <p>Riconoscerli è il primo passo per evitarli. Ogni errore ha una soluzione immediata, applicabile dal prossimo prompt.</p>
+
+  <div class="errors-grid">
+    <div class="err-card">
+      <p class="err-n">⚠️ Errore 01</p>
+      <p class="err-title">Il prompt telescopico</p>
+      <div class="err-bad">❌ "Fammi un programma che calcola le coordinate e poi le visualizza e magari aggiunge il grafico della portanza e se puoi anche la tabella…"</div>
+      <p class="err-fix">✅ Dividi in prompt separati: prima il calcolo, poi la visualizzazione, poi il grafico.</p>
+    </div>
+    <div class="err-card">
+      <p class="err-n">⚠️ Errore 02</p>
+      <p class="err-title">Senza unità di misura</p>
+      <div class="err-bad">❌ "La corda è 1.2 e il carico è 3800"</div>
+      <p class="err-fix">✅ Sempre: "corda c = 1.2 m", "carico L = 3800 N". L'IA non distingue Newton da kg-forza.</p>
+    </div>
+    <div class="err-card">
+      <p class="err-n">⚠️ Errore 03</p>
+      <p class="err-title">Senza contesto tecnologico</p>
+      <div class="err-bad">❌ "Scrivi il codice per il profilo NACA"</div>
+      <p class="err-fix">✅ Specifica: "In Python 3, senza librerie esterne" oppure "In HTML vanilla, un solo file index.html".</p>
+    </div>
+    <div class="err-card">
+      <p class="err-n">⚠️ Errore 04</p>
+      <p class="err-title">Accettare il primo risultato</p>
+      <div class="err-bad">❌ Il codice ha un errore ma non lo segnali → l'IA non sa che c'è qualcosa da correggere.</div>
+      <p class="err-fix">✅ Incolla sempre l'errore esatto. Cita la riga del problema e chiedi la correzione mirata.</p>
+    </div>
+    <div class="err-card">
+      <p class="err-n">⚠️ Errore 05</p>
+      <p class="err-title">Linguaggio naturale vago</p>
+      <div class="err-bad">❌ "Fai qualcosa di bello per visualizzare le forze sull'ala"</div>
+      <p class="err-fix">✅ "Disegna il diagramma di taglio e momento sul semiala: distribuzione ellittica, SVG inline, assi etichettati in N e N·m."</p>
+    </div>
+    <div class="err-card">
+      <p class="err-n">⚠️ Errore 06</p>
+      <p class="err-title">Non dare la fonte</p>
+      <div class="err-bad">❌ Chiedi il calcolo del momento critico di un pannello senza fornire le equazioni di riferimento.</div>
+      <p class="err-fix">✅ Allega o trascrivi le formule dalla dispensa. Altrimenti l'IA usa formule generiche, non quelle del corso.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S13 ===== -->
+<section id="s13">
+  <h2><span class="step-num">Appendice</span>Quick Reference — Scheda di studio</h2>
+
+  <p>Tienila aperta mentre scrivi i tuoi prompt. Le 6 componenti, i 6 errori, il template in una riga.</p>
+
+  <div class="qr-box">
+    <p class="qr-label">Le 6 componenti</p>
+    <div class="pill-row">
+      <span class="pill p1">01 · RUOLO</span>
+      <span class="pill p2">02 · CONTESTO</span>
+      <span class="pill p3">03 · PARAMETRI (con unità!)</span>
+      <span class="pill p4">04 · FORMATO OUTPUT</span>
+      <span class="pill p5">05 · VINCOLI (usa NON)</span>
+      <span class="pill p6">06 · CONTESTO EXTRA (allega formule)</span>
+    </div>
+
+    <hr class="qr-div"/>
+
+    <p class="qr-label">I 6 errori da non fare</p>
+    <div class="pill-row">
+      <span class="pill perr">⚠️ Prompt telescopico</span>
+      <span class="pill perr">⚠️ Senza unità di misura</span>
+      <span class="pill perr">⚠️ Senza contesto SW</span>
+      <span class="pill perr">⚠️ No feedback errori</span>
+      <span class="pill perr">⚠️ Linguaggio vago</span>
+      <span class="pill perr">⚠️ Senza fonte/formule</span>
+    </div>
+
+    <hr class="qr-div"/>
+
+    <p class="qr-label">Template in una riga</p>
+    <div class="template-block" style="margin:0;">
+      <p>"<span class="tl-key k1">[RUOLO]</span>. Sto <span class="tl-key k2">[CONTESTO]</span>. Ho bisogno di <span class="tl-key k3">[COMPITO]</span>. I parametri sono <span class="tl-key k4">[PARAMETRI con unità]</span>. Rispondi in <span class="tl-key k5">[FORMATO]</span>. NON usare <span class="tl-key k6">[VINCOLI]</span>. Usa le formule: <span class="tl-key k7">[EXTRA]</span>."</p>
+    </div>
+  </div>
+</section>
+
+</div><!-- /wrapper -->
+
+<footer class="doc-footer">
+  <p>Prof. Ing. Raucci Biagio — ITIS E. Majorana, Cassino — A.S. 2025/2026</p>
+  <p>Costruzioni Aeronautiche — Laboratorio Digitale</p>
+</footer>
+
+<script>
+/* doppio clic su template-block per copiare */
+document.querySelectorAll('.template-block').forEach(block => {
+  block.addEventListener('dblclick', async () => {
+    const raw = block.innerText
+      .replace(/^TEMPLATE.*\n/, '')
+      .replace(/^ESEMPIO.*\n/, '')
+      .trim();
+    try {
+      await navigator.clipboard.writeText(raw);
+      block.classList.add('copied');
+      setTimeout(() => block.classList.remove('copied'), 600);
+    } catch(e) {}
+  });
+});
+</script>
+</body>
+</html>
