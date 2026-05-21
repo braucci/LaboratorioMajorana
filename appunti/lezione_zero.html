@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lezione Zero — La tua prima Web App</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
+<style>
+/* ══════════════════════════════════════════
+   RESET & ROOT
+══════════════════════════════════════════ */
+:root {
+  --gold:   #c8a96e;
+  --silver: #8fa3b8;
+  --cyan:   #00d4ff;
+  --orange: #ff6b35;
+  --green:  #00e676;
+  --yellow: #ffd600;
+
+  --serif:  'Cormorant Garamond', Georgia, serif;
+  --mono:   'DM Mono', monospace;
+  --sans:   'DM Sans', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  background: #0a0a12;
+  color: rgba(255,255,255,0.88);
+  font-family: var(--sans);
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ══════════════════════════════════════════
+   CUSTOM CURSOR
+══════════════════════════════════════════ */
+#cursor-dot {
+  position: fixed;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .2s, height .2s, opacity .2s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,110,0.4);
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%,-50%);
+  transition: width .35s cubic-bezier(.25,.46,.45,.94),
+              height .35s cubic-bezier(.25,.46,.45,.94),
+              border-color .35s;
+}
+body:has(a:hover) #cursor-ring,
+body:has(button:hover) #cursor-ring {
+  width: 56px; height: 56px;
+  border-color: rgba(200,169,110,0.7);
+}
+
+/* ══════════════════════════════════════════
+   THREE.JS CANVAS + GRAIN
+══════════════════════════════════════════ */
+#bg-canvas {
+  position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+}
+
+#grain {
+  position: fixed; inset: 0;
+  z-index: 1; pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  animation: grain-shift 0.3s steps(1) infinite;
+}
+@keyframes grain-shift {
+  0%{transform:translate(0,0)} 10%{transform:translate(-2%,-3%)} 20%{transform:translate(3%,1%)}
+  30%{transform:translate(-1%,4%)} 40%{transform:translate(2%,-1%)} 50%{transform:translate(-3%,2%)}
+  60%{transform:translate(1%,-2%)} 70%{transform:translate(-2%,3%)} 80%{transform:translate(3%,-3%)}
+  90%{transform:translate(-1%,1%)} 100%{transform:translate(2%,2%)}
+}
+
+main { position: relative; z-index: 2; }
+
+/* ══════════════════════════════════════════
+   PROGRESS BAR + NAV DOTS
+══════════════════════════════════════════ */
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--gold), #e8c888, var(--gold));
+  z-index: 100;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(200,169,110,0.6);
+}
+
+#nav-dots {
+  position: fixed; right: 28px; top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background .3s, transform .3s;
+}
+.nav-dot.active { background: var(--gold); transform: scale(1.5); }
+
+/* ══════════════════════════════════════════
+   SECTIONS
+══════════════════════════════════════════ */
+.scene {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10vh 6vw;
+  position: relative;
+  overflow: hidden;
+}
+.scene::before {
+  content: '';
+  position: absolute;
+  left: 6vw; right: 6vw; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.15), transparent);
+}
+.scene-inner { max-width: 860px; width: 100%; }
+
+/* HERO */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 0 5vw;
+  position: relative;
+}
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: .65rem;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0; transform: translateY(20px);
+  margin-bottom: 1.8rem;
+}
+
+.hero-title {
+  font-family: var(--serif);
+  font-size: clamp(3.5rem, 9vw, 8rem);
+  font-weight: 300;
+  line-height: .95;
+  letter-spacing: -.02em;
+  opacity: 0; transform: translateY(40px);
+}
+.hero-title em {
+  font-style: italic;
+  color: var(--gold);
+  display: block;
+}
+
+.hero-subtitle {
+  font-size: clamp(.85rem, 1.8vw, 1.05rem);
+  color: rgba(255,255,255,0.45);
+  font-weight: 300;
+  max-width: 500px;
+  margin-top: 2rem;
+  line-height: 1.8;
+  opacity: 0; transform: translateY(20px);
+}
+
+.hero-meta {
+  margin-top: 3rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.scroll-hint {
+  position: absolute; bottom: 6vh; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  opacity: 0; cursor: pointer;
+}
+.scroll-hint span {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+.scroll-line {
+  width: 1px; height: 48px;
+  background: linear-gradient(180deg, rgba(200,169,110,0.6), transparent);
+  animation: scroll-pulse 2s ease-in-out infinite;
+}
+@keyframes scroll-pulse {
+  0%,100% { transform: scaleY(1); opacity: .6; }
+  50% { transform: scaleY(.5); opacity: .2; }
+}
+
+/* ══════════════════════════════════════════
+   BLOCK BADGE — A/B/C/D con colore proprio
+══════════════════════════════════════════ */
+.block-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  padding: .35rem .95rem .35rem .55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  margin-bottom: 1.4rem;
+  opacity: 0;
+}
+.block-badge .bb-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.block-badge .bb-time {
+  font-size: .55rem;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: .15em;
+}
+
+.block-badge.bA { color: var(--cyan);   border-color: rgba(0,212,255,0.35); }
+.block-badge.bA .bb-dot { background: var(--cyan); }
+.block-badge.bB { color: var(--orange); border-color: rgba(255,107,53,0.35); }
+.block-badge.bB .bb-dot { background: var(--orange); }
+.block-badge.bC { color: var(--green);  border-color: rgba(0,230,118,0.35); }
+.block-badge.bC .bb-dot { background: var(--green); }
+.block-badge.bD { color: var(--yellow); border-color: rgba(255,214,0,0.35); }
+.block-badge.bD .bb-dot { background: var(--yellow); }
+
+/* SCENE LABEL */
+.scene-label {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.4rem;
+  opacity: 0;
+}
+.scene-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px; height: 1px;
+  background: var(--gold);
+}
+
+.scene-title {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  margin-bottom: 1.6rem;
+  opacity: 0; transform: translateY(30px);
+}
+.scene-title em { font-style: italic; color: var(--gold); }
+
+.scene-body {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.85;
+  max-width: 620px;
+  font-weight: 300;
+  opacity: 0; transform: translateY(20px);
+}
+
+/* ══════════════════════════════════════════
+   ROADMAP GRID — 4 blocchi A/B/C/D
+══════════════════════════════════════════ */
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 2.5rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+@media (max-width: 640px) { .roadmap-grid { grid-template-columns: 1fr; } }
+
+.rm-cell {
+  background: rgba(10,10,18,0.7);
+  padding: 1.6rem 1.5rem 1.5rem;
+  position: relative;
+  opacity: 0; transform: translateY(16px);
+  backdrop-filter: blur(8px);
+  border-left: 3px solid;
+}
+.rm-cell.cA { border-left-color: var(--cyan); }
+.rm-cell.cB { border-left-color: var(--orange); }
+.rm-cell.cC { border-left-color: var(--green); }
+.rm-cell.cD { border-left-color: var(--yellow); }
+
+.rm-cell::after {
+  content: attr(data-letter);
+  position: absolute;
+  right: 14px; top: 2px;
+  font-family: var(--serif);
+  font-size: 4rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.035);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.rm-tag {
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+  display: block;
+}
+.cA .rm-tag { color: var(--cyan); }
+.cB .rm-tag { color: var(--orange); }
+.cC .rm-tag { color: var(--green); }
+.cD .rm-tag { color: var(--yellow); }
+
+.rm-title {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: .55rem;
+}
+.rm-desc {
+  font-size: .85rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════
+   PIPELINE — Browser → HTML/CSS/JS → Screen
+══════════════════════════════════════════ */
+.pipeline {
+  margin-top: 2.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  gap: 0;
+  align-items: stretch;
+  opacity: 0;
+  transform: translateY(16px);
+}
+@media (max-width: 720px) { .pipeline { grid-template-columns: 1fr; gap: 12px; } }
+
+.pp-node {
+  background: rgba(10,10,18,0.75);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 1.2rem 1.1rem;
+  text-align: center;
+  backdrop-filter: blur(8px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 140px;
+}
+.pp-icon { font-size: 1.6rem; margin-bottom: .5rem; }
+.pp-name {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: .3rem;
+}
+.pp-sub {
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: rgba(255,255,255,0.3);
+  line-height: 1.5;
+}
+
+.pp-trio {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.pp-trio .pp-node { border: none; min-height: 140px; }
+.pp-trio .pp-node.html .pp-name { color: var(--orange); }
+.pp-trio .pp-node.css  .pp-name { color: #c084fc; }
+.pp-trio .pp-node.js   .pp-name { color: var(--yellow); }
+
+/* analogy card */
+.analogy-card {
+  margin-top: 2.2rem;
+  padding: 1.6rem 2rem;
+  border: 1px solid rgba(200,169,110,0.18);
+  border-left: 3px solid var(--gold);
+  background: rgba(200,169,110,0.04);
+  backdrop-filter: blur(10px);
+  border-radius: 2px;
+  opacity: 0; transform: translateX(-20px);
+}
+.analogy-card .card-tag {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: .7rem;
+}
+.analogy-card p {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 300;
+  font-style: italic;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.75;
+}
+
+/* ══════════════════════════════════════════
+   PROMPT BOX
+══════════════════════════════════════════ */
+.prompt-box {
+  margin-top: 2rem;
+  background: rgba(5,12,24,0.85);
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: 4px;
+  padding: 1.6rem 1.9rem;
+  position: relative;
+  opacity: 0; transform: translateY(20px);
+  backdrop-filter: blur(12px);
+  cursor: copy;
+  transition: border-color .3s;
+}
+.prompt-box:hover { border-color: rgba(0,212,255,0.55); }
+.prompt-box::before {
+  content: 'PROMPT — doppio clic per copiare';
+  position: absolute;
+  top: -10px; left: 18px;
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .2em;
+  color: var(--cyan);
+  background: #0a0a12;
+  padding: 2px 10px;
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: 2px;
+}
+.prompt-box pre {
+  font-family: var(--mono);
+  font-size: .8rem;
+  line-height: 1.75;
+  color: rgba(134,239,172,0.85);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+@keyframes flash-cyan {
+  0% { border-color: var(--cyan); box-shadow: 0 0 22px rgba(0,212,255,0.35); }
+  100% { border-color: rgba(0,212,255,0.25); box-shadow: none; }
+}
+.prompt-box.copied { animation: flash-cyan .7s ease forwards; }
+
+/* ══════════════════════════════════════════
+   STEPS — 4/6 step cards
+══════════════════════════════════════════ */
+.steps-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 1px;
+  margin-top: 2rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.step-cell {
+  background: rgba(10,10,18,0.75);
+  padding: 1.4rem 1.2rem;
+  backdrop-filter: blur(8px);
+  text-align: center;
+  opacity: 0; transform: translateY(14px);
+  position: relative;
+}
+.step-num {
+  display: inline-flex;
+  align-items: center justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(200,169,110,0.12);
+  border: 1px solid rgba(200,169,110,0.4);
+  font-family: var(--mono);
+  font-size: .8rem;
+  color: var(--gold);
+  margin-bottom: .8rem;
+}
+.step-title {
+  font-family: var(--serif);
+  font-size: .98rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: .5rem;
+}
+.step-desc {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.55;
+}
+
+/* ══════════════════════════════════════════
+   CODE COMPARE / SIDE-BY-SIDE
+══════════════════════════════════════════ */
+.code-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 2rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+  opacity: 0;
+  transform: translateY(20px);
+}
+@media (max-width: 700px) { .code-compare { grid-template-columns: 1fr; } }
+
+.code-pane {
+  background: rgba(5,8,14,0.9);
+  padding: 1.3rem 1.5rem;
+  backdrop-filter: blur(8px);
+}
+.code-pane .cp-label {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin-bottom: .8rem;
+}
+.code-pane.orig .cp-label { color: rgba(255,255,255,0.4); }
+.code-pane.mod  .cp-label { color: var(--yellow); }
+
+.code-pane pre {
+  font-family: var(--mono);
+  font-size: .73rem;
+  line-height: 1.7;
+  color: rgba(134,239,172,0.75);
+  white-space: pre;
+  overflow-x: auto;
+  margin: 0;
+}
+.code-pane .cmt { color: rgba(200,169,110,0.55); font-style: italic; }
+.code-pane .var { color: var(--cyan); }
+.code-pane .hex { color: #fbbf24; }
+
+/* ══════════════════════════════════════════
+   BAD vs GOOD (save file errors)
+══════════════════════════════════════════ */
+.compare-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-top: 2rem;
+  opacity: 0; transform: translateY(20px);
+}
+@media (max-width: 640px) { .compare-pair { grid-template-columns: 1fr; } }
+
+.cp-bad, .cp-good {
+  padding: 1.4rem 1.6rem;
+  backdrop-filter: blur(8px);
+}
+.cp-bad  { background: rgba(239,68,68,0.06); }
+.cp-good { background: rgba(16,185,129,0.06); }
+
+.cp-head {
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .9rem;
+}
+.cp-bad  .cp-head { color: #f87171; }
+.cp-good .cp-head { color: #34d399; }
+
+.cp-list {
+  list-style: none;
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.85;
+}
+.cp-list li {
+  padding-left: 1.2rem;
+  position: relative;
+  margin: .35rem 0;
+}
+.cp-list li::before {
+  position: absolute; left: 0; top: 0;
+  font-weight: 700;
+}
+.cp-bad  .cp-list li { color: rgba(248,113,113,0.75); }
+.cp-bad  .cp-list li::before { content: '✗'; color: #f87171; }
+.cp-good .cp-list li { color: rgba(52,211,153,0.8); }
+.cp-good .cp-list li::before { content: '✓'; color: #34d399; }
+
+/* ══════════════════════════════════════════
+   CALLOUT (key message)
+══════════════════════════════════════════ */
+.callout {
+  margin-top: 1.6rem;
+  padding: 1.2rem 1.6rem;
+  border-left: 2px solid;
+  border-radius: 0 4px 4px 0;
+  opacity: 0; transform: translateX(-16px);
+  backdrop-filter: blur(8px);
+}
+.callout-title {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+}
+.callout p { font-size: .9rem; color: rgba(255,255,255,0.55); line-height: 1.75; }
+.callout p strong { color: rgba(255,255,255,0.85); font-weight: 500; }
+
+.callout.gold   { background: rgba(200,169,110,0.06); border-color: var(--gold); }
+.callout.cyan   { background: rgba(0,212,255,0.06);   border-color: var(--cyan); }
+.callout.orange { background: rgba(255,107,53,0.06);  border-color: var(--orange); }
+.callout.green  { background: rgba(0,230,118,0.06);   border-color: var(--green); }
+.callout.yellow { background: rgba(255,214,0,0.07);   border-color: var(--yellow); }
+
+.callout.gold   .callout-title { color: var(--gold); }
+.callout.cyan   .callout-title { color: var(--cyan); }
+.callout.orange .callout-title { color: var(--orange); }
+.callout.green  .callout-title { color: var(--green); }
+.callout.yellow .callout-title { color: var(--yellow); }
+
+/* ══════════════════════════════════════════
+   CYCLE — modifica/testa/carica/pubblica
+══════════════════════════════════════════ */
+.cycle-row {
+  display: flex; gap: 0;
+  margin-top: 2.2rem;
+  position: relative;
+}
+.cycle-row::before {
+  content: '';
+  position: absolute;
+  top: 36px; left: 32px; right: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.25), transparent);
+  z-index: 0;
+}
+@media (max-width: 600px) { .cycle-row { flex-direction: column; gap: 1px; } .cycle-row::before { display: none; } }
+
+.cycle-step {
+  flex: 1;
+  padding: 1.6rem 1.2rem 1.4rem;
+  background: rgba(10,10,18,0.75);
+  border: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+  opacity: 0; transform: translateY(20px);
+  backdrop-filter: blur(8px);
+  position: relative; z-index: 1;
+  transition: background .3s, border-color .3s;
+}
+.cycle-step:hover { background: rgba(200,169,110,0.05); border-color: rgba(200,169,110,0.2); }
+
+.c-icon { font-size: 1.4rem; display: block; margin-bottom: .6rem; }
+.c-n {
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: var(--gold);
+  letter-spacing: .18em;
+  margin-bottom: .4rem;
+}
+.c-title {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: .4rem;
+}
+.c-desc { font-size: .78rem; color: rgba(255,255,255,0.35); line-height: 1.55; }
+
+/* ══════════════════════════════════════════
+   LIVELLI / CHALLENGES
+══════════════════════════════════════════ */
+.levels-grid {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+@media (max-width: 640px) { .levels-grid { grid-template-columns: 1fr; } }
+
+.level-cell {
+  background: rgba(10,10,18,0.75);
+  padding: 1.4rem 1.5rem;
+  backdrop-filter: blur(8px);
+  opacity: 0; transform: translateY(14px);
+  border-top: 3px solid;
+  transition: background .3s;
+}
+.level-cell:hover { background: rgba(200,169,110,0.04); }
+.level-cell.l1 { border-top-color: var(--green); }
+.level-cell.l2 { border-top-color: var(--cyan); }
+.level-cell.l3 { border-top-color: var(--orange); }
+.level-cell.l4 { border-top-color: #c084fc; }
+.level-cell.l5 { border-top-color: var(--yellow); }
+
+.lv-tag {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .45rem;
+  display: block;
+}
+.level-cell.l1 .lv-tag { color: var(--green); }
+.level-cell.l2 .lv-tag { color: var(--cyan); }
+.level-cell.l3 .lv-tag { color: var(--orange); }
+.level-cell.l4 .lv-tag { color: #c084fc; }
+.level-cell.l5 .lv-tag { color: var(--yellow); }
+
+.lv-title {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+  margin-bottom: .4rem;
+}
+.lv-desc { font-size: .82rem; color: rgba(255,255,255,0.4); line-height: 1.6; }
+
+/* ══════════════════════════════════════════
+   CHECKLIST FINALE
+══════════════════════════════════════════ */
+.checklist {
+  margin-top: 2rem;
+  list-style: none;
+  display: flex; flex-direction: column;
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.checklist li {
+  background: rgba(10,10,18,0.75);
+  padding: 1rem 1.4rem;
+  display: flex; align-items: center; gap: 1rem;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.75);
+  opacity: 0; transform: translateX(-16px);
+  backdrop-filter: blur(8px);
+  transition: background .3s, color .3s;
+}
+.checklist li:hover {
+  background: rgba(0,230,118,0.06);
+  color: rgba(255,255,255,0.95);
+}
+.checklist li .ck-mark {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(0,230,118,0.12);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════ */
+#footer {
+  min-height: 40vh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 6rem 5vw;
+  position: relative; z-index: 2;
+}
+#footer::before {
+  content: '';
+  position: absolute;
+  left: 10%; right: 10%; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.25), transparent);
+}
+.footer-inner { opacity: 0; }
+
+.footer-mission {
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  font-weight: 300;
+  letter-spacing: -.02em;
+  line-height: 1;
+  margin-bottom: .3rem;
+  color: rgba(255,255,255,0.92);
+}
+.footer-mission em {
+  font-style: italic;
+  color: var(--green);
+}
+
+.footer-meta {
+  margin-top: 2rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  line-height: 2;
+}
+
+.footer-next {
+  margin-top: 2.5rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--gold);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .scene { padding: 8vh 5vw; }
+  #nav-dots { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<canvas id="bg-canvas"></canvas>
+
+<div id="grain"></div>
+
+<div id="progress"></div>
+
+<nav id="nav-dots">
+  <div class="nav-dot active" data-target="hero"></div>
+  <div class="nav-dot" data-target="s0"></div>
+  <div class="nav-dot" data-target="s1"></div>
+  <div class="nav-dot" data-target="s2"></div>
+  <div class="nav-dot" data-target="s3"></div>
+  <div class="nav-dot" data-target="s4"></div>
+  <div class="nav-dot" data-target="s5"></div>
+  <div class="nav-dot" data-target="s6"></div>
+  <div class="nav-dot" data-target="s7"></div>
+  <div class="nav-dot" data-target="s8"></div>
+  <div class="nav-dot" data-target="s9"></div>
+  <div class="nav-dot" data-target="s10"></div>
+</nav>
+
+<main>
+
+<section id="hero">
+  <div class="hero-eyebrow">Laboratorio Digitale · Costruzioni Aeronautiche</div>
+  <h1 class="hero-title">
+    Lezione<br>
+    <em>Zero</em>
+  </h1>
+  <p class="hero-subtitle">La tua prima Web App — dal codice al browser, in due ore.</p>
+  <div class="hero-meta">
+    Prof. Ing. Biagio Raucci &nbsp;·&nbsp; 2 ore · 4 blocchi da 30 min &nbsp;·&nbsp; A.S. 2024/25
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <span>Scorri</span>
+  </div>
+</section>
+
+<section class="scene" id="s0">
+  <div class="scene-inner">
+    <div class="scene-label">Atto I — Struttura</div>
+    <h2 class="scene-title">Cosa faremo<br><em>oggi</em></h2>
+    <p class="scene-body">Una roadmap in quattro blocchi da trenta minuti. Quattro tappe progressive: comprendere il sistema, generare il codice con l'IA, pubblicarlo online, personalizzarlo.</p>
+
+    <div class="roadmap-grid">
+      <div class="rm-cell cA" data-letter="A">
+        <span class="rm-tag">Blocco A · 0–30 min</span>
+        <div class="rm-title">Il Grande Quadro</div>
+        <div class="rm-desc">Cos'è una web app, come funziona il browser, il trio HTML/CSS/JS. Obiettivo: capire dove stiamo andando.</div>
+      </div>
+      <div class="rm-cell cB" data-letter="B">
+        <span class="rm-tag">Blocco B · 30–60 min</span>
+        <div class="rm-title">Usiamo l'IA</div>
+        <div class="rm-desc">Chiediamo a Claude di generare il convertitore. Analizziamo il codice: lo leggiamo senza scriverlo.</div>
+      </div>
+      <div class="rm-cell cC" data-letter="C">
+        <span class="rm-tag">Blocco C · 60–90 min</span>
+        <div class="rm-title">GitHub Account</div>
+        <div class="rm-desc">Creiamo il profilo GitHub. Carichiamo il file. Attiviamo GitHub Pages. Il sito va live.</div>
+      </div>
+      <div class="rm-cell cD" data-letter="D">
+        <span class="rm-tag">Blocco D · 90–120 min</span>
+        <div class="rm-title">Personalizziamo</div>
+        <div class="rm-desc">Modifichiamo colori, testo, footer. Prima modifica al codice: CSS variables. Deploy aggiornato.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s1">
+  <div class="scene-inner">
+    <div class="block-badge bA"><span class="bb-dot"></span>Blocco A <span class="bb-time">· 0–30 min</span></div>
+    <div class="scene-label">Atto II — Il modello mentale</div>
+    <h2 class="scene-title">Come funziona<br>una <em>pagina web</em>?</h2>
+    <p class="scene-body">Il browser legge tre tipi di codice e li trasforma in ciò che vedi sullo schermo. Tre strati distinti, ciascuno con un compito chiaro. Capire questa separazione è capire tutto il web.</p>
+
+    <div class="pipeline">
+      <div class="pp-node">
+        <span class="pp-icon">🌐</span>
+        <div class="pp-name">Browser</div>
+        <div class="pp-sub">Chrome · Firefox · Safari<br>legge e disegna</div>
+      </div>
+      <div class="pp-trio">
+        <div class="pp-node html">
+          <span class="pp-icon">📄</span>
+          <div class="pp-name">HTML</div>
+          <div class="pp-sub">la struttura<br>(gli elementi)</div>
+        </div>
+        <div class="pp-node css">
+          <span class="pp-icon">🎨</span>
+          <div class="pp-name">CSS</div>
+          <div class="pp-sub">l'aspetto<br>(colori, font)</div>
+        </div>
+        <div class="pp-node js">
+          <span class="pp-icon">⚙️</span>
+          <div class="pp-name">JS</div>
+          <div class="pp-sub">il comportamento<br>(interazione)</div>
+        </div>
+      </div>
+      <div class="pp-node">
+        <span class="pp-icon">🖥️</span>
+        <div class="pp-name">Schermo</div>
+        <div class="pp-sub">il risultato<br>che vedi</div>
+      </div>
+    </div>
+
+    <div class="analogy-card">
+      <div class="card-tag">💡 Messaggio chiave</div>
+      <p>Oggi NON dobbiamo scrivere il codice a mano. Lo farà l'IA per noi. Il nostro lavoro è capire la struttura, personalizzarla e pubblicarla. È esattamente quello che fa un ingegnere: capisce il sistema, lo adatta, lo mette in opera.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s2">
+  <div class="scene-inner">
+    <div class="block-badge bA"><span class="bb-dot"></span>Blocco A <span class="bb-time">· concetto fondamentale</span></div>
+    <div class="scene-label">Atto III — Architettura</div>
+    <h2 class="scene-title">Un solo file:<br><em>index.html</em></h2>
+    <p class="scene-body">Tutto il codice della nostra app — struttura, stile, logica — vive in un singolo file di circa dodici kilobyte. Zero installazioni. Zero dipendenze. Funziona su qualsiasi computer, si carica su GitHub Pages gratuitamente.</p>
+
+    <div class="roadmap-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top:2.5rem;">
+      <div class="rm-cell cB" data-letter="H" style="border-left-color: var(--orange);">
+        <span class="rm-tag" style="color: var(--orange);">HTML</span>
+        <div class="rm-title">La struttura</div>
+        <div class="rm-desc">Otto categorie di misura, oltre 35 conversioni. Pulsanti, campi, sezioni — la scaffalatura visibile dell'app.</div>
+      </div>
+      <div class="rm-cell" data-letter="C" style="border-left-color: #c084fc;">
+        <span class="rm-tag" style="color: #c084fc;">CSS</span>
+        <div class="rm-title">L'aspetto</div>
+        <div class="rm-desc">Tema scuro stile aeronautico, griglia blueprint, animazioni fluide. Il "vestito" dell'applicazione.</div>
+      </div>
+      <div class="rm-cell cD" data-letter="J" style="border-left-color: var(--yellow);">
+        <span class="rm-tag" style="color: var(--yellow);">JS</span>
+        <div class="rm-title">La logica</div>
+        <div class="rm-desc">Tutta la matematica di conversione tra Sistema Internazionale e Sistema Imperiale.</div>
+      </div>
+    </div>
+
+    <div class="callout green">
+      <div class="callout-title">✅ Approccio corretto</div>
+      <p>Massima semplicità, zero dipendenze esterne, funziona su qualsiasi computer e si carica su GitHub Pages gratuitamente. È l'architettura più adatta per iniziare — la stessa che usano molti progetti open source per la propria homepage.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s3">
+  <div class="scene-inner">
+    <div class="block-badge bB"><span class="bb-dot"></span>Blocco B <span class="bb-time">· 30–60 min</span></div>
+    <div class="scene-label">Atto IV — Attivazione</div>
+    <h2 class="scene-title">Otteniamo il codice<br>con <em>l'IA</em></h2>
+    <p class="scene-body">Apri claude.ai e incolla esattamente il prompt qui sotto. Doppio clic sul riquadro per copiarlo negli appunti. È un prompt che contiene tutti gli elementi necessari: cosa generare, in quale formato, con quali vincoli.</p>
+
+    <div class="prompt-box" id="prompt-conv">
+<pre>"Crea un convertitore di unità di misura SI ↔ Imperiale
+come singolo file HTML.
+
+Deve includere: Lunghezza, Massa, Forza, Pressione,
+Velocità, Temperatura, Potenza, Area.
+
+Il file deve funzionare aprendolo direttamente nel browser,
+senza server.
+
+Usa un tema scuro stile aeronautico.
+Ogni conversione deve mostrare la formula.
+
+Non usare librerie esterne: tutto in un solo file index.html."</pre>
+    </div>
+
+    <div class="steps-row">
+      <div class="step-cell">
+        <div class="step-num">1</div>
+        <div class="step-title">Vai su claude.ai</div>
+        <div class="step-desc">Apri il browser, digita claude.ai</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">2</div>
+        <div class="step-title">Copia il prompt</div>
+        <div class="step-desc">Doppio clic qui sopra, oppure CTRL+C sul testo</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">3</div>
+        <div class="step-title">Incolla in chat</div>
+        <div class="step-desc">CTRL+V, premi invio, aspetta la risposta</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">4</div>
+        <div class="step-title">Pulsante "Copy"</div>
+        <div class="step-desc">Sul codice generato, in alto a destra</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s4">
+  <div class="scene-inner">
+    <div class="block-badge bB"><span class="bb-dot"></span>Blocco B <span class="bb-time">· analisi guidata</span></div>
+    <div class="scene-label">Atto V — Lettura</div>
+    <h2 class="scene-title">Leggiamo<br>il <em>codice generato</em></h2>
+    <p class="scene-body">Non dobbiamo capire tutto. Dobbiamo solo trovare i punti chiave: dove sono i colori, dove avviene la matematica, dove vivono gli elementi visibili. È sufficiente per personalizzare l'app.</p>
+
+    <div class="code-compare">
+      <div class="code-pane orig">
+        <div class="cp-label">Anatomia del file</div>
+<pre>&lt;!DOCTYPE html&gt;
+&lt;html lang="it"&gt;
+&lt;head&gt;
+  ...
+  &lt;style&gt;
+    <span class="var">:root</span> {
+      --bg:     <span class="hex">#0b0f14</span>;
+      --accent: <span class="hex">#00d4ff</span>;  <span class="cmt">← il colore</span>
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  ...
+  &lt;script&gt;
+    <span class="var">function</span> calcAtoB(i) {
+      <span class="cmt">// ← qui la conversione</span>
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+      </div>
+      <div class="code-pane mod">
+        <div class="cp-label">Le 4 sezioni chiave</div>
+        <div style="display: flex; flex-direction: column; gap: .7rem; font-family: var(--mono); font-size: .77rem; line-height: 1.55;">
+          <div>
+            <span style="color: var(--cyan);">:root { }</span><br>
+            <span style="color: rgba(255,255,255,0.45);">Il pannello di controllo del tema.<br>Tutte le variabili di colore.</span>
+          </div>
+          <div>
+            <span style="color: var(--orange);">&lt;style&gt;</span><br>
+            <span style="color: rgba(255,255,255,0.45);">L'aspetto grafico — colori, font,<br>spaziature, animazioni.</span>
+          </div>
+          <div>
+            <span style="color: var(--green);">function calc()</span><br>
+            <span style="color: rgba(255,255,255,0.45);">La matematica: conversione<br>tra unità A e unità B.</span>
+          </div>
+          <div>
+            <span style="color: rgba(255,255,255,0.7);">&lt;body&gt;</span><br>
+            <span style="color: rgba(255,255,255,0.45);">La struttura visibile: pulsanti,<br>campi di testo, sezioni.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s5">
+  <div class="scene-inner">
+    <div class="block-badge bB"><span class="bb-dot"></span>Blocco B <span class="bb-time">· operazione critica</span></div>
+    <div class="scene-label">Atto VI — Disciplina</div>
+    <h2 class="scene-title">Salviamo il file<br><em>correttamente</em></h2>
+    <p class="scene-body">Un dettaglio apparentemente banale che fa la differenza tra "funziona" e "non funziona". Windows nasconde le estensioni dei file di default — è la trappola in cui cadono il 90% degli studenti la prima volta.</p>
+
+    <div class="compare-pair">
+      <div class="cp-good">
+        <div class="cp-head">✅ Modo corretto</div>
+        <ul class="cp-list">
+          <li>Apri Blocco Note (Notepad)</li>
+          <li>Incolla il codice copiato da Claude</li>
+          <li>File → Salva con nome…</li>
+          <li>Nome file: <strong style="color:#86efac;">index.html</strong></li>
+          <li>Salva come tipo: "Tutti i file (*.*)"</li>
+          <li>Clicca Salva</li>
+          <li>Doppio clic sul file → si apre nel browser</li>
+        </ul>
+      </div>
+      <div class="cp-bad">
+        <div class="cp-head">❌ Errori comuni</div>
+        <ul class="cp-list">
+          <li>index.html.txt — estensione doppia</li>
+          <li>index.txt — estensione sbagliata</li>
+          <li>index — senza estensione</li>
+          <li>Salvato in Word — formato incompatibile</li>
+          <li>"Documento di testo" anziché "Tutti i file"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout yellow">
+      <div class="callout-title">⚠️ Punto di attenzione</div>
+      <p>Windows nasconde di default le estensioni "conosciute" come <strong>.txt</strong>. Se il tuo file appare semplicemente come <strong>index.html</strong> ma il browser non lo apre correttamente, è probabile che si chiami in realtà <strong>index.html.txt</strong>. Soluzione: in Blocco Note, seleziona sempre "Tutti i file (*.*)" prima di salvare.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s6">
+  <div class="scene-inner">
+    <div class="block-badge bC"><span class="bb-dot"></span>Blocco C <span class="bb-time">· 60–90 min</span></div>
+    <div class="scene-label">Atto VII — Profilo pubblico</div>
+    <h2 class="scene-title">Creiamo l'account<br><em>GitHub</em></h2>
+    <p class="scene-body">GitHub è il "garage digitale" dove milioni di sviluppatori e ingegneri salvano il loro codice. È gratuito, permette di pubblicare siti web statici senza pagare nulla, ed è il portfolio professionale standard nell'industria del software.</p>
+
+    <div class="steps-row" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+      <div class="step-cell">
+        <div class="step-num">1</div>
+        <div class="step-title">Vai su github.com</div>
+        <div class="step-desc">Clicca "Sign up" in alto a destra</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">2</div>
+        <div class="step-title">Compila il form</div>
+        <div class="step-desc">Email scolastica · password sicura · username "nome.cognome"</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">3</div>
+        <div class="step-title">Verifica email</div>
+        <div class="step-desc">Controlla casella, clicca il link di conferma</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">4</div>
+        <div class="step-title">New repository</div>
+        <div class="step-desc">Nome: convertitore-unita · Public ✓ Add README ✓</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">5</div>
+        <div class="step-title">Upload files</div>
+        <div class="step-desc">Add file → Upload → trascina index.html</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">6</div>
+        <div class="step-title">Commit changes</div>
+        <div class="step-desc">Messaggio: "Prima versione" → conferma</div>
+      </div>
+    </div>
+
+    <div class="callout cyan">
+      <div class="callout-title">🎓 Valore extra</div>
+      <p>Un profilo GitHub con progetti pubblicati è un asset reale per il tuo curriculum: dimostra che sai usare strumenti professionali, che hai prodotto qualcosa di pubblico, e che sai documentare il tuo lavoro. Vale più di mille righe sul CV.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s7">
+  <div class="scene-inner">
+    <div class="block-badge bC"><span class="bb-dot"></span>Blocco C <span class="bb-time">· il momento magico</span></div>
+    <div class="scene-label">Atto VIII — Pubblicazione</div>
+    <h2 class="scene-title">Attiviamo<br><em>GitHub Pages</em></h2>
+    <p class="scene-body">Tre clic. Il tuo sito è online, raggiungibile da chiunque nel mondo. Lo stesso meccanismo usato da progetti professionali per documentazione e portfolio.</p>
+
+    <div class="steps-row">
+      <div class="step-cell">
+        <div class="step-num">1</div>
+        <div class="step-title">⚙️ Settings</div>
+        <div class="step-desc">Dalla pagina del repository, scheda Settings in alto a destra</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">2</div>
+        <div class="step-title">📄 Pages</div>
+        <div class="step-desc">Nel menu laterale sinistro, trova e clicca "Pages"</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">3</div>
+        <div class="step-title">Branch → Save</div>
+        <div class="step-desc">Source: Deploy from a branch · Branch: main / (root) · Save</div>
+      </div>
+      <div class="step-cell">
+        <div class="step-num">4</div>
+        <div class="step-title">Aspetta ~60 sec</div>
+        <div class="step-desc">GitHub compila il sito. Apparirà il link verde in alto</div>
+      </div>
+    </div>
+
+    <div class="prompt-box" style="border-color: rgba(0,230,118,0.3); margin-top:2rem;">
+<pre style="color: rgba(134,239,172,0.95); font-size: 1rem; text-align: center;">🌐  Il tuo sito sarà raggiungibile a:
+
+https://<span style="color: var(--yellow);">tuousername</span>.github.io/<span style="color: var(--cyan);">convertitore-unita</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s8">
+  <div class="scene-inner">
+    <div class="block-badge bD"><span class="bb-dot"></span>Blocco D <span class="bb-time">· 90–120 min</span></div>
+    <div class="scene-label">Atto IX — La prima modifica</div>
+    <h2 class="scene-title">Personalizziamo<br>il <em>codice</em></h2>
+    <p class="scene-body">La prima vera modifica al codice: cambiare i colori senza rompere nulla. Le variabili CSS in <code style="font-family:var(--mono);color:var(--cyan);font-size:.9em;">:root { }</code> sono il "pannello di controllo" del tema. Cambiare un solo valore cambia il colore ovunque nel sito — è il principio DRY: <em>Don't Repeat Yourself</em>, uno dei pilastri dell'ingegneria del software.</p>
+
+    <div class="code-compare">
+      <div class="code-pane orig">
+        <div class="cp-label">/* CODICE ORIGINALE */</div>
+<pre><span class="var">:root</span> {
+  --bg:      <span class="hex">#0b0f14</span>;  <span class="cmt">/* sfondo scuro    */</span>
+  --accent:  <span class="hex">#00d4ff</span>;  <span class="cmt">/* ciano brillante */</span>
+  --accent2: <span class="hex">#ff6b35</span>;  <span class="cmt">/* arancio         */</span>
+  --success: <span class="hex">#00e676</span>;  <span class="cmt">/* verde risultato */</span>
+}</pre>
+      </div>
+      <div class="code-pane mod">
+        <div class="cp-label">/* VERSIONE PERSONALIZZATA */</div>
+<pre><span class="var">:root</span> {
+  --bg:      <span class="hex">#0a0e1a</span>;  <span class="cmt">/* blu notte    */</span>
+  --accent:  <span class="hex">#ffd600</span>;  <span class="cmt">/* giallo neon  */</span>
+  --accent2: <span class="hex">#e91e63</span>;  <span class="cmt">/* rosa acceso  */</span>
+  --success: <span class="hex">#76ff03</span>;  <span class="cmt">/* lime         */</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="callout yellow">
+      <div class="callout-title">🛠️ Esercizio operativo</div>
+      <p>Apri <strong>index.html</strong> con Blocco Note → cerca <code style="font-family:var(--mono);color:var(--cyan);font-size:.9em;">:root</code> → cambia <code style="font-family:var(--mono);color:var(--cyan);font-size:.9em;">--accent</code> con il tuo colore preferito → salva → ricarica il browser con F5. Poi carica di nuovo il file su GitHub. In meno di un minuto il sito sarà aggiornato anche online.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s9">
+  <div class="scene-inner">
+    <div class="block-badge bD"><span class="bb-dot"></span>Blocco D <span class="bb-time">· workflow</span></div>
+    <div class="scene-label">Atto X — Il ciclo</div>
+    <h2 class="scene-title">Modifica → Testa<br>→ Carica → <em>Pubblica</em></h2>
+    <p class="scene-body">Il ciclo che userai per sempre. Quattro passaggi che diventeranno automatici come respirare. È esattamente il workflow reale che si usa in azienda con Git — oggi lo fate a mano, presto lo farete in automatico.</p>
+
+    <div class="cycle-row">
+      <div class="cycle-step">
+        <span class="c-icon">📝</span>
+        <div class="c-n">Passo 01</div>
+        <div class="c-title">Modifica</div>
+        <div class="c-desc">Apri index.html con Blocco Note. Fai le modifiche.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🔍</span>
+        <div class="c-n">Passo 02</div>
+        <div class="c-title">Testa</div>
+        <div class="c-desc">Doppio clic sul file. Verifica nel browser che funzioni.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">☁️</span>
+        <div class="c-n">Passo 03</div>
+        <div class="c-title">Carica</div>
+        <div class="c-desc">GitHub → tuo repo. Add file → Upload. Sovrascrivi.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🚀</span>
+        <div class="c-n">Passo 04</div>
+        <div class="c-title">Pubblica</div>
+        <div class="c-desc">Commit changes. Aspetta 60 secondi. Sito aggiornato!</div>
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <div class="callout-title">🔁 Il workflow reale</div>
+      <p>Questo ciclo — modifica, testa, carica, pubblica — è <strong>identico</strong> al workflow professionale che si usa in azienda con Git. La differenza è che in azienda i passaggi 3 e 4 sono automatizzati da comandi come <code style="font-family:var(--mono);color:var(--cyan);font-size:.9em;">git push</code>. Oggi lo fate a mano. Presto, quando imparerete Git, lo farete con un singolo comando.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s10">
+  <div class="scene-inner">
+    <div class="scene-label">Atto XI — Oltre la lezione zero</div>
+    <h2 class="scene-title">Cosa puoi<br>fare <em>adesso</em></h2>
+    <p class="scene-body">Cinque sfide opzionali per chi vuole andare oltre. Ciascuna ti porta su un livello superiore di padronanza. Non è obbligatorio farle tutte — è obbligatorio sapere che esistono e che, con l'IA come copilota, sono tutte alla tua portata.</p>
+
+    <div class="levels-grid">
+      <div class="level-cell l1">
+        <span class="lv-tag">🎨 Livello 1</span>
+        <div class="lv-title">Tema personalizzato</div>
+        <div class="lv-desc">Cambia tutti i colori in <code style="font-family:var(--mono);color:var(--cyan);font-size:.85em;">:root</code> per creare il tuo tema. Prova un tema bianco (light mode) invertendo background e foreground.</div>
+      </div>
+      <div class="level-cell l2">
+        <span class="lv-tag">✈️ Livello 2</span>
+        <div class="lv-title">Velocità aeronautica</div>
+        <div class="lv-desc">Aggiungi la conversione Mach → TAS ad alta quota (formula con temperatura ISA). Chiedi all'IA di scrivere la formula corretta.</div>
+      </div>
+      <div class="level-cell l3">
+        <span class="lv-tag">📐 Livello 3</span>
+        <div class="lv-title">Momento flettente</div>
+        <div class="lv-desc">Aggiungi la categoria Momento: N·m ↔ lbf·ft, fondamentale per le verifiche strutturali aeronautiche.</div>
+      </div>
+      <div class="level-cell l4">
+        <span class="lv-tag">🔎 Livello 4</span>
+        <div class="lv-title">Campo di ricerca</div>
+        <div class="lv-desc">Aggiungi un input di ricerca che filtra le conversioni mentre scrivi. Chiedi a Claude: "aggiungi un filtro di ricerca al codice".</div>
+      </div>
+      <div class="level-cell l5">
+        <span class="lv-tag">📱 Livello 5</span>
+        <div class="lv-title">Versione mobile</div>
+        <div class="lv-desc">Il sito si vede bene su smartphone? Chiedi all'IA di renderlo responsive con CSS media queries.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer id="footer">
+  <div class="footer-inner">
+    <div class="footer-mission">Missione<br><em>completata</em></div>
+
+    <ul class="checklist">
+      <li><span class="ck-mark">✓</span> Sai cos'è una web app e come è strutturata</li>
+      <li><span class="ck-mark">✓</span> Hai usato l'IA per generare codice professionale</li>
+      <li><span class="ck-mark">✓</span> Hai un account GitHub — il tuo portfolio digitale</li>
+      <li><span class="ck-mark">✓</span> Il tuo sito è online, raggiungibile da chiunque</li>
+      <li><span class="ck-mark">✓</span> Hai fatto la tua prima modifica al codice sorgente</li>
+    </ul>
+
+    <div class="footer-meta">
+      Prof. Ing. Biagio Raucci<br>
+      ITIS E. Majorana · Cassino<br>
+      A.S. 2024/25 · Costruzioni Aeronautiche
+    </div>
+
+    <div class="footer-next">// Prossima lezione: Python · variabili, tipi di dato, operatori</div>
+  </div>
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   THREE.JS — fluid ink background
+══════════════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  const uniforms = {
+    uTime:       { value: 0 },
+    uMouse:      { value: new THREE.Vector2(0.5, 0.5) },
+    uMouseVel:   { value: new THREE.Vector2(0, 0) },
+    uColorA:     { value: new THREE.Color(0.04, 0.04, 0.07) },
+    uColorB:     { value: new THREE.Color(0.06, 0.08, 0.14) },
+    uColorAccent:{ value: new THREE.Color(0.20, 0.17, 0.11) },
+    uIntensity:  { value: 0.0 },
+  };
+
+  const geo = new THREE.PlaneGeometry(2, 2);
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = vec4(position, 1.0); }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec2  uMouse;
+      uniform vec2  uMouseVel;
+      uniform vec3  uColorA;
+      uniform vec3  uColorB;
+      uniform vec3  uColorAccent;
+      uniform float uIntensity;
+      varying vec2  vUv;
+
+      vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
+      vec2 mod289(vec2 x){return x-floor(x*(1./289.))*289.;}
+      vec3 permute(vec3 x){return mod289(((x*34.)+1.)*x);}
+      float snoise(vec2 v){
+        const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+        vec2 i=floor(v+dot(v,C.yy));
+        vec2 x0=v-i+dot(i,C.xx);
+        vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
+        vec4 x12=x0.xyxy+C.xxzz;
+        x12.xy-=i1;
+        i=mod289(i);
+        vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
+        vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
+        m=m*m; m=m*m;
+        vec3 x2=2.*fract(p*C.www)-1.;
+        vec3 h=abs(x2)-0.5;
+        vec3 ox=floor(x2+0.5);
+        vec3 a0=x2-ox;
+        m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
+        vec3 g;
+        g.x=a0.x*x0.x+h.x*x0.y;
+        g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+        return 130.*dot(m,g);
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        float t = uTime * 0.12;
+        float n1 = snoise(uv * 2.8 + vec2(t * 0.3, t * 0.18));
+        float n2 = snoise(uv * 5.2 + vec2(-t * 0.25, t * 0.4) + n1 * 0.3);
+        float n3 = snoise(uv * 1.4 + vec2(t * 0.1, -t * 0.15) + n2 * 0.2);
+        float flow = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.5 + 0.5;
+
+        vec2 md = uv - uMouse;
+        float md2 = dot(md, md);
+        float splash = exp(-md2 * 8.0) * length(uMouseVel) * 12.0;
+        float ripple = snoise(uv * 12.0 - uMouse * 5.0 + uTime * 0.5) * 0.5 + 0.5;
+        splash *= ripple;
+
+        vec3 col = mix(uColorA, uColorB, flow);
+        col = mix(col, uColorAccent, splash * uIntensity * 0.6 + flow * uIntensity * 0.15);
+
+        float vig = 1.0 - smoothstep(0.3, 1.1, length(uv - 0.5) * 1.5);
+        col *= vig;
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh);
+
+  // Palette per ogni scena — colori coordinati con i blocchi della lezione
+  const sectionColors = [
+    { a:[0.04,0.04,0.07], b:[0.06,0.08,0.14], ac:[0.20,0.17,0.11] }, // hero — gold
+    { a:[0.04,0.05,0.10], b:[0.06,0.09,0.18], ac:[0.12,0.18,0.26] }, // s0 — roadmap blue
+    { a:[0.03,0.07,0.12], b:[0.04,0.12,0.20], ac:[0.06,0.20,0.30] }, // s1 — cyan (Blocco A)
+    { a:[0.04,0.06,0.10], b:[0.06,0.10,0.16], ac:[0.10,0.16,0.24] }, // s2 — single file
+    { a:[0.10,0.05,0.02], b:[0.18,0.08,0.03], ac:[0.28,0.14,0.05] }, // s3 — orange (Blocco B prompt)
+    { a:[0.08,0.06,0.04], b:[0.14,0.10,0.05], ac:[0.22,0.16,0.06] }, // s4 — code analysis warm
+    { a:[0.10,0.07,0.02], b:[0.16,0.10,0.04], ac:[0.24,0.16,0.05] }, // s5 — save file warning
+    { a:[0.02,0.08,0.05], b:[0.03,0.14,0.08], ac:[0.05,0.22,0.12] }, // s6 — green (Blocco C github)
+    { a:[0.02,0.10,0.06], b:[0.04,0.16,0.10], ac:[0.06,0.24,0.14] }, // s7 — green pages live
+    { a:[0.08,0.07,0.02], b:[0.14,0.12,0.03], ac:[0.22,0.20,0.04] }, // s8 — yellow (Blocco D personalize)
+    { a:[0.07,0.06,0.02], b:[0.12,0.10,0.03], ac:[0.20,0.18,0.05] }, // s9 — yellow cycle
+    { a:[0.06,0.04,0.08], b:[0.10,0.06,0.14], ac:[0.16,0.10,0.22] }, // s10 — purple challenges
+  ];
+
+  let targetA = new THREE.Color(...sectionColors[0].a);
+  let targetB = new THREE.Color(...sectionColors[0].b);
+  let targetAC = new THREE.Color(...sectionColors[0].ac);
+
+  window.setBgPalette = function(idx) {
+    idx = Math.min(idx, sectionColors.length - 1);
+    const p = sectionColors[idx];
+    targetA.setRGB(...p.a);
+    targetB.setRGB(...p.b);
+    targetAC.setRGB(...p.ac);
+  };
+
+  let lastTime = 0;
+  function animate(ts) {
+    requestAnimationFrame(animate);
+    const dt = Math.min((ts - lastTime) / 1000, 0.05);
+    lastTime = ts;
+    uniforms.uTime.value += dt;
+
+    uniforms.uColorA.value.lerp(targetA, 0.025);
+    uniforms.uColorB.value.lerp(targetB, 0.025);
+    uniforms.uColorAccent.value.lerp(targetAC, 0.025);
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  let prevMouse = { x: 0.5, y: 0.5 };
+  window.addEventListener('mousemove', e => {
+    const nx = e.clientX / window.innerWidth;
+    const ny = 1 - e.clientY / window.innerHeight;
+    uniforms.uMouseVel.value.set(nx - prevMouse.x, ny - prevMouse.y);
+    uniforms.uMouse.value.set(nx, ny);
+    prevMouse = { x: nx, y: ny };
+    uniforms.uIntensity.value = Math.min(uniforms.uIntensity.value + 0.3, 1.0);
+  });
+
+  setInterval(() => {
+    uniforms.uMouseVel.value.multiplyScalar(0.85);
+    uniforms.uIntensity.value *= 0.96;
+  }, 16);
+})();
+
+/* ══════════════════════════════════════════════════════
+   LENIS smooth scroll
+══════════════════════════════════════════════════════ */
+const lenis = new Lenis({
+  duration: 1.4,
+  easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  direction: 'vertical',
+  smooth: true,
+  smoothTouch: false,
+});
+function rafCb(time) { lenis.raf(time); requestAnimationFrame(rafCb); }
+requestAnimationFrame(rafCb);
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add(time => lenis.raf(time * 1000));
+gsap.ticker.lagSmoothing(0);
+
+/* ══════════════════════════════════════════════════════
+   CUSTOM CURSOR
+══════════════════════════════════════════════════════ */
+const dot  = document.getElementById('cursor-dot');
+const ring = document.getElementById('cursor-ring');
+let cx = 0, cy = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+(function cursorLoop() {
+  requestAnimationFrame(cursorLoop);
+  rx += (cx - rx) * 0.12;
+  ry += (cy - ry) * 0.12;
+  dot.style.left  = cx + 'px';
+  dot.style.top   = cy + 'px';
+  ring.style.left = rx + 'px';
+  ring.style.top  = ry + 'px';
+})();
+
+/* ══════════════════════════════════════════════════════
+   GSAP + SCROLLTRIGGER — cinematic reveals
+══════════════════════════════════════════════════════ */
+gsap.registerPlugin(ScrollTrigger);
+
+lenis.on('scroll', ({ progress }) => {
+  document.getElementById('progress').style.width = (progress * 100) + '%';
+});
+
+const heroTl = gsap.timeline({ delay: 0.3 });
+heroTl
+  .to('.hero-eyebrow',  { opacity:1, y:0, duration:1.2, ease:'expo.out' })
+  .to('.hero-title',    { opacity:1, y:0, duration:1.4, ease:'expo.out' }, '-=0.8')
+  .to('.hero-subtitle', { opacity:1, y:0, duration:1.2, ease:'expo.out' }, '-=0.9')
+  .to('.hero-meta',     { opacity:1, duration:1.0, ease:'power2.out' }, '-=0.6')
+  .to('.scroll-hint',   { opacity:1, duration:0.8, ease:'power2.out' }, '-=0.4');
+
+function revealScene(sectionId, paletteIdx) {
+  const section = document.querySelector(sectionId);
+  if (!section) return;
+
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top 70%',
+    onEnter:     () => window.setBgPalette(paletteIdx),
+    onEnterBack: () => window.setBgPalette(paletteIdx),
+  });
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: section,
+      start: 'top 72%',
+      end: 'bottom 20%',
+      toggleActions: 'play none none reverse',
+    }
+  });
+
+  const blockBadge = section.querySelector('.block-badge');
+  if (blockBadge) tl.to(blockBadge, { opacity:1, duration:0.6, ease:'power3.out' }, 0);
+
+  const label = section.querySelector('.scene-label');
+  const title = section.querySelector('.scene-title');
+  const body  = section.querySelector('.scene-body');
+
+  if (label) tl.to(label, { opacity:1, duration:0.6, ease:'power3.out' }, 0.05);
+  if (title) tl.to(title, { opacity:1, y:0, duration:1.0, ease:'expo.out' }, 0.15);
+  if (body)  tl.to(body,  { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.3);
+
+  // roadmap grid (4 blocchi)
+  const rmCells = section.querySelectorAll('.rm-cell');
+  if (rmCells.length) {
+    tl.to(rmCells, { opacity:1, y:0, duration:0.7, ease:'power3.out', stagger: { amount:0.4 } }, 0.4);
+  }
+
+  // pipeline
+  const pipeline = section.querySelector('.pipeline');
+  if (pipeline) tl.to(pipeline, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4);
+
+  // analogy card
+  const analogyCard = section.querySelector('.analogy-card');
+  if (analogyCard) tl.to(analogyCard, { opacity:1, x:0, duration:0.9, ease:'power3.out' }, 0.55);
+
+  // prompt box
+  const promptBox = section.querySelector('.prompt-box');
+  if (promptBox) tl.to(promptBox, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4);
+
+  // step cells
+  const stepCells = section.querySelectorAll('.step-cell');
+  if (stepCells.length) {
+    tl.to(stepCells, { opacity:1, y:0, duration:0.6, ease:'power3.out', stagger: { amount:0.5 } }, 0.5);
+  }
+
+  // code compare
+  const codeCompare = section.querySelector('.code-compare');
+  if (codeCompare) tl.to(codeCompare, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4);
+
+  // compare pair (bad vs good)
+  const cmpPair = section.querySelector('.compare-pair');
+  if (cmpPair) tl.to(cmpPair, { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.4);
+
+  // callouts
+  const callouts = section.querySelectorAll('.callout');
+  callouts.forEach((el, i) => tl.to(el, { opacity:1, x:0, duration:0.8, ease:'power3.out' }, 0.55 + i * 0.1));
+
+  // cycle steps
+  const cycleSteps = section.querySelectorAll('.cycle-step');
+  if (cycleSteps.length) {
+    tl.to(cycleSteps, { opacity:1, y:0, duration:0.7, ease:'expo.out', stagger: { amount:0.35 } }, 0.4);
+  }
+
+  // levels
+  const levelCells = section.querySelectorAll('.level-cell');
+  if (levelCells.length) {
+    tl.to(levelCells, { opacity:1, y:0, duration:0.65, ease:'power3.out', stagger: { amount:0.45 } }, 0.4);
+  }
+}
+
+const scenes = [
+  ['#s0', 1], ['#s1', 2], ['#s2', 3], ['#s3', 4], ['#s4', 5],
+  ['#s5', 6], ['#s6', 7], ['#s7', 8], ['#s8', 9], ['#s9', 10], ['#s10', 11],
+];
+scenes.forEach(([id, pal]) => revealScene(id, pal));
+
+// FOOTER — Missione Completata
+gsap.timeline({
+  scrollTrigger: { trigger:'#footer', start:'top 80%' }
+})
+.to('.footer-inner', { opacity:1, duration:1.0, ease:'power3.out' })
+.from('.footer-mission', { y:30, opacity:0, duration:1.2, ease:'expo.out' }, 0)
+.from('.checklist li',   { x:-16, opacity:0, duration:0.6, ease:'power3.out', stagger: 0.12 }, 0.3)
+.from('.footer-meta',    { opacity:0, y:10, duration:0.8, ease:'power2.out' }, '+=0.2')
+.from('.footer-next',    { opacity:0, duration:0.8, ease:'power2.out' }, '-=0.4');
+
+/* ══════════════════════════════════════════════════════
+   NAV DOTS
+══════════════════════════════════════════════════════ */
+const navSections = ['hero','s0','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
+const navDots = document.querySelectorAll('.nav-dot');
+
+navDots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    const target = document.getElementById(navSections[i]);
+    if (target) lenis.scrollTo(target, { offset: 0, duration: 1.6, easing: t => 1 - Math.pow(1-t, 4) });
+  });
+});
+
+ScrollTrigger.create({
+  trigger: 'main',
+  start: 'top top',
+  end: 'bottom bottom',
+  onUpdate: self => {
+    const prog = self.progress;
+    const idx = Math.round(prog * (navSections.length - 1));
+    navDots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+});
+
+/* ══════════════════════════════════════════════════════
+   COPY ON DOUBLE-CLICK
+══════════════════════════════════════════════════════ */
+document.querySelectorAll('.prompt-box').forEach(block => {
+  block.addEventListener('dblclick', async () => {
+    const text = block.querySelector('pre')?.innerText?.trim() || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      block.classList.add('copied');
+      setTimeout(() => block.classList.remove('copied'), 700);
+    } catch(e) {}
+  });
+});
+
+/* ══════════════════════════════════════════════════════
+   SCROLL HINT CLICK
+══════════════════════════════════════════════════════ */
+document.querySelector('.scroll-hint')?.addEventListener('click', () => {
+  lenis.scrollTo(document.getElementById('s0'), { duration: 1.8 });
+});
+</script>
+</body>
+</html>
