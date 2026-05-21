@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Il Prompt Perfetto — Laboratorio Digitale</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
+<style>
+/* ══════════════════════════════════════════
+   RESET & ROOT
+══════════════════════════════════════════ */
+:root {
+  --c0: #0a0a12;     /* void */
+  --c1: #0d1117;     /* deep navy */
+  --c2: #0f1923;     /* ink */
+  --c3: #0e1a0e;     /* forest */
+  --c4: #14100a;     /* amber dark */
+  --c5: #100e1a;     /* violet dark */
+  --c6: #0a1214;     /* teal dark */
+  --c7: #12080a;     /* crimson dark */
+
+  --gold:   #c8a96e;
+  --silver: #8fa3b8;
+  --fog:    rgba(255,255,255,0.06);
+
+  --serif:  'Cormorant Garamond', Georgia, serif;
+  --mono:   'DM Mono', monospace;
+  --sans:   'DM Sans', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  background: var(--c0);
+  color: rgba(255,255,255,0.88);
+  font-family: var(--sans);
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ══════════════════════════════════════════
+   CUSTOM CURSOR
+══════════════════════════════════════════ */
+#cursor-dot {
+  position: fixed;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .2s, height .2s, opacity .2s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,110,0.4);
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%,-50%);
+  transition: width .35s cubic-bezier(.25,.46,.45,.94),
+              height .35s cubic-bezier(.25,.46,.45,.94),
+              border-color .35s;
+}
+body:has(a:hover) #cursor-ring,
+body:has(button:hover) #cursor-ring {
+  width: 56px; height: 56px;
+  border-color: rgba(200,169,110,0.7);
+}
+
+/* ══════════════════════════════════════════
+   THREE.JS CANVAS
+══════════════════════════════════════════ */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════
+   GRAIN OVERLAY
+══════════════════════════════════════════ */
+#grain {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  animation: grain-shift 0.3s steps(1) infinite;
+}
+@keyframes grain-shift {
+  0%  { transform: translate(0,0); }
+  10% { transform: translate(-2%,-3%); }
+  20% { transform: translate(3%, 1%); }
+  30% { transform: translate(-1%, 4%); }
+  40% { transform: translate(2%,-1%); }
+  50% { transform: translate(-3%, 2%); }
+  60% { transform: translate(1%,-2%); }
+  70% { transform: translate(-2%, 3%); }
+  80% { transform: translate(3%,-3%); }
+  90% { transform: translate(-1%, 1%); }
+  100%{ transform: translate(2%, 2%); }
+}
+
+/* ══════════════════════════════════════════
+   MAIN LAYOUT
+══════════════════════════════════════════ */
+main {
+  position: relative;
+  z-index: 2;
+}
+
+/* ══════════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════════ */
+#progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), #e8c888, var(--gold));
+  z-index: 100;
+  width: 0%;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(200,169,110,0.6);
+}
+
+/* ══════════════════════════════════════════
+   NAV DOTS
+══════════════════════════════════════════ */
+#nav-dots {
+  position: fixed;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background .3s, transform .3s;
+}
+.nav-dot.active {
+  background: var(--gold);
+  transform: scale(1.5);
+}
+
+/* ══════════════════════════════════════════
+   SECTIONS — base
+══════════════════════════════════════════ */
+.scene {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10vh 6vw;
+  position: relative;
+  overflow: hidden;
+}
+
+/* horizontal line decoration */
+.scene::before {
+  content: '';
+  position: absolute;
+  left: 6vw; right: 6vw;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.15), transparent);
+}
+
+.scene-inner {
+  max-width: 860px;
+  width: 100%;
+}
+
+/* ══════════════════════════════════════════
+   HERO
+══════════════════════════════════════════ */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 5vw;
+  position: relative;
+}
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: .65rem;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0;
+  transform: translateY(20px);
+  margin-bottom: 1.8rem;
+}
+
+.hero-title {
+  font-family: var(--serif);
+  font-size: clamp(3.5rem, 9vw, 8rem);
+  font-weight: 300;
+  line-height: .95;
+  letter-spacing: -.02em;
+  opacity: 0;
+  transform: translateY(40px);
+}
+.hero-title em {
+  font-style: italic;
+  color: var(--gold);
+  display: block;
+}
+
+.hero-subtitle {
+  font-size: clamp(.85rem, 1.8vw, 1.05rem);
+  color: rgba(255,255,255,0.45);
+  font-weight: 300;
+  max-width: 500px;
+  margin-top: 2rem;
+  line-height: 1.8;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.hero-meta {
+  margin-top: 3rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  cursor: pointer;
+}
+.scroll-hint span {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+.scroll-line {
+  width: 1px;
+  height: 48px;
+  background: linear-gradient(180deg, rgba(200,169,110,0.6), transparent);
+  animation: scroll-pulse 2s ease-in-out infinite;
+}
+@keyframes scroll-pulse {
+  0%,100% { transform: scaleY(1); opacity: .6; }
+  50%      { transform: scaleY(.5); opacity: .2; }
+}
+
+/* ══════════════════════════════════════════
+   SECTION LABELS
+══════════════════════════════════════════ */
+.scene-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.4rem;
+  opacity: 0;
+}
+.scene-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: var(--gold);
+}
+
+.scene-title {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  margin-bottom: 1.6rem;
+  opacity: 0;
+  transform: translateY(30px);
+}
+.scene-title em { font-style: italic; color: var(--gold); }
+
+.scene-body {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.85;
+  max-width: 620px;
+  font-weight: 300;
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* ══════════════════════════════════════════
+   ANALOGIA CARD
+══════════════════════════════════════════ */
+.analogy-card {
+  margin-top: 2.5rem;
+  padding: 2rem 2.4rem;
+  border: 1px solid rgba(200,169,110,0.15);
+  border-left: 3px solid var(--gold);
+  background: rgba(200,169,110,0.04);
+  backdrop-filter: blur(10px);
+  border-radius: 2px;
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.analogy-card .card-tag {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: .8rem;
+}
+.analogy-card p {
+  font-size: .95rem;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.8;
+  font-style: italic;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: 300;
+}
+
+/* ══════════════════════════════════════════
+   6 COMPONENTI GRID
+══════════════════════════════════════════ */
+.comp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 2.5rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+@media (max-width: 640px) { .comp-grid { grid-template-columns: 1fr 1fr; } }
+
+.comp-cell {
+  background: rgba(10,10,18,0.7);
+  padding: 1.6rem 1.4rem;
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(16px);
+  backdrop-filter: blur(8px);
+  transition: background .3s;
+  cursor: default;
+}
+.comp-cell:hover { background: rgba(200,169,110,0.06); }
+
+.comp-cell::after {
+  content: attr(data-n);
+  position: absolute;
+  right: 8px; bottom: -8px;
+  font-family: var(--serif);
+  font-size: 4.5rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.03);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.comp-num {
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .2em;
+  color: var(--gold);
+  margin-bottom: .5rem;
+  display: block;
+}
+.comp-name {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: .3rem;
+}
+.comp-q {
+  font-size: .75rem;
+  color: rgba(255,255,255,0.3);
+  font-style: italic;
+  margin-bottom: .7rem;
+}
+.comp-ex {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.5;
+  border-left: 1px solid rgba(200,169,110,0.2);
+  padding-left: .7rem;
+}
+
+/* ══════════════════════════════════════════
+   COMPARE — good/bad
+══════════════════════════════════════════ */
+.compare-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-top: 1.4rem;
+  opacity: 0;
+  transform: translateY(20px);
+}
+@media (max-width: 600px) { .compare-pair { grid-template-columns: 1fr; } }
+
+.cp-bad, .cp-good {
+  padding: 1.4rem 1.6rem;
+  backdrop-filter: blur(8px);
+}
+.cp-bad  { background: rgba(239,68,68,0.06); }
+.cp-good { background: rgba(16,185,129,0.06); }
+
+.cp-label {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .7rem;
+}
+.cp-bad  .cp-label { color: #f87171; }
+.cp-good .cp-label { color: #34d399; }
+
+.cp-text {
+  font-family: var(--mono);
+  font-size: .8rem;
+  line-height: 1.65;
+}
+.cp-bad  .cp-text { color: rgba(248,113,113,0.7); }
+.cp-good .cp-text { color: rgba(52,211,153,0.7); }
+
+/* ══════════════════════════════════════════
+   TEMPLATE BOX
+══════════════════════════════════════════ */
+.template-block {
+  margin-top: 2rem;
+  background: rgba(5,10,20,0.8);
+  border: 1px solid rgba(200,169,110,0.2);
+  border-radius: 4px;
+  padding: 2rem 2.2rem;
+  position: relative;
+  opacity: 0;
+  transform: translateY(20px);
+  backdrop-filter: blur(12px);
+  cursor: copy;
+  transition: border-color .3s;
+}
+.template-block:hover { border-color: rgba(200,169,110,0.45); }
+.template-block::before {
+  content: 'TEMPLATE — doppio clic per copiare';
+  position: absolute;
+  top: -10px; left: 20px;
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .2em;
+  color: var(--gold);
+  background: #0a0a12;
+  padding: 2px 10px;
+  border: 1px solid rgba(200,169,110,0.2);
+  border-radius: 2px;
+}
+
+.tl {
+  display: flex;
+  gap: .8rem;
+  margin: .4rem 0;
+  align-items: flex-start;
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.7;
+}
+.tk { font-weight: 500; flex-shrink: 0; min-width: 145px; }
+.tv { color: rgba(255,255,255,0.3); }
+.tk.k1 { color: #67e8f9; }
+.tk.k2 { color: #fbbf24; }
+.tk.k3 { color: rgba(255,255,255,0.7); }
+.tk.k4 { color: #fde68a; }
+.tk.k5 { color: #86efac; }
+.tk.k6 { color: #d8b4fe; }
+.tk.k7 { color: #fca5a5; }
+
+@keyframes flash-gold {
+  0%   { border-color: var(--gold); box-shadow: 0 0 20px rgba(200,169,110,0.3); }
+  100% { border-color: rgba(200,169,110,0.2); box-shadow: none; }
+}
+.template-block.copied { animation: flash-gold .6s ease forwards; }
+
+/* ══════════════════════════════════════════
+   CALLOUT
+══════════════════════════════════════════ */
+.callout {
+  margin-top: 1.6rem;
+  padding: 1.2rem 1.6rem;
+  border-left: 2px solid;
+  border-radius: 0 4px 4px 0;
+  opacity: 0;
+  transform: translateX(-16px);
+  backdrop-filter: blur(8px);
+}
+.callout-title {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+}
+.callout p { font-size: .9rem; color: rgba(255,255,255,0.55); line-height: 1.75; }
+
+.callout.gold   { background: rgba(200,169,110,0.06); border-color: var(--gold); }
+.callout.green  { background: rgba(52,211,153,0.06);  border-color: #34d399; }
+.callout.amber  { background: rgba(251,191,36,0.06);  border-color: #fbbf24; }
+.callout.red    { background: rgba(248,113,113,0.06); border-color: #f87171; }
+.callout.violet { background: rgba(216,180,254,0.06); border-color: #d8b4fe; }
+
+.callout.gold   .callout-title { color: var(--gold); }
+.callout.green  .callout-title { color: #34d399; }
+.callout.amber  .callout-title { color: #fbbf24; }
+.callout.red    .callout-title { color: #f87171; }
+.callout.violet .callout-title { color: #d8b4fe; }
+
+/* ══════════════════════════════════════════
+   ERRORS GRID
+══════════════════════════════════════════ */
+.errors-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.1);
+  margin-top: 2rem;
+}
+@media (max-width: 600px) { .errors-grid { grid-template-columns: 1fr; } }
+
+.err-cell {
+  background: rgba(10,10,18,0.85);
+  padding: 1.4rem 1.5rem;
+  opacity: 0;
+  transform: translateY(12px);
+  backdrop-filter: blur(8px);
+}
+.err-n {
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: #f87171;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  margin-bottom: .4rem;
+}
+.err-title {
+  font-family: var(--serif);
+  font-size: .95rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: .6rem;
+}
+.err-bad {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: rgba(248,113,113,0.6);
+  margin-bottom: .6rem;
+  line-height: 1.5;
+}
+.err-fix {
+  font-size: .82rem;
+  color: rgba(52,211,153,0.7);
+  line-height: 1.6;
+  padding-left: .8rem;
+  border-left: 1px solid rgba(52,211,153,0.3);
+}
+
+/* ══════════════════════════════════════════
+   CYCLE STEPS
+══════════════════════════════════════════ */
+.cycle-row {
+  display: flex;
+  gap: 0;
+  margin-top: 2rem;
+  position: relative;
+}
+.cycle-row::before {
+  content: '';
+  position: absolute;
+  top: 28px; left: 28px; right: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.2), transparent);
+  z-index: 0;
+}
+@media (max-width: 600px) { .cycle-row { flex-direction: column; gap: 1px; } }
+
+.cycle-step {
+  flex: 1;
+  padding: 1.6rem 1.2rem 1.4rem;
+  background: rgba(10,10,18,0.7);
+  border: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 1;
+  transition: background .3s, border-color .3s;
+}
+.cycle-step:hover { background: rgba(200,169,110,0.05); border-color: rgba(200,169,110,0.15); }
+
+.c-icon { font-size: 1.4rem; display: block; margin-bottom: .6rem; }
+.c-n {
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: var(--gold);
+  letter-spacing: .18em;
+  margin-bottom: .4rem;
+}
+.c-title {
+  font-family: var(--serif);
+  font-size: .95rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: .4rem;
+}
+.c-desc { font-size: .78rem; color: rgba(255,255,255,0.35); line-height: 1.55; }
+
+/* ══════════════════════════════════════════
+   QUICK REF (appendice)
+══════════════════════════════════════════ */
+.qr-container {
+  margin-top: 2.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.qr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 1.2rem;
+}
+.pill {
+  font-family: var(--mono);
+  font-size: .68rem;
+  padding: .3rem .85rem;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.pill.pc1 { color: #67e8f9; border-color: rgba(103,232,249,0.3); background: rgba(103,232,249,0.05); }
+.pill.pc2 { color: #fbbf24; border-color: rgba(251,191,36,0.3);  background: rgba(251,191,36,0.05);  }
+.pill.pc3 { color: #fde68a; border-color: rgba(253,230,138,0.3); background: rgba(253,230,138,0.05); }
+.pill.pc4 { color: #86efac; border-color: rgba(134,239,172,0.3); background: rgba(134,239,172,0.05); }
+.pill.pc5 { color: #d8b4fe; border-color: rgba(216,180,254,0.3); background: rgba(216,180,254,0.05); }
+.pill.pc6 { color: #fca5a5; border-color: rgba(252,165,165,0.3); background: rgba(252,165,165,0.05); }
+.pill.perr{ color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.05); }
+
+.qr-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.15), transparent);
+  margin: 1.2rem 0;
+}
+.qr-label {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: .8rem;
+}
+
+/* ══════════════════════════════════════════
+   LEVEL BADGE (Livello 1/2/3)
+══════════════════════════════════════════ */
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  padding: .3rem .9rem .3rem .6rem;
+  border-radius: 999px;
+  border: 1px solid;
+  margin-bottom: 1.4rem;
+  opacity: 0;
+}
+.level-badge .lb-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.level-badge.lv1 { color: #86efac; border-color: rgba(134,239,172,0.3); }
+.level-badge.lv1 .lb-dot { background: #86efac; }
+.level-badge.lv2 { color: #67e8f9; border-color: rgba(103,232,249,0.3); }
+.level-badge.lv2 .lb-dot { background: #67e8f9; }
+.level-badge.lv3 { color: var(--gold); border-color: rgba(200,169,110,0.35); }
+.level-badge.lv3 .lb-dot { background: var(--gold); }
+
+/* ══════════════════════════════════════════
+   TECHNIQUE ROW (numbered technique cards)
+══════════════════════════════════════════ */
+.technique-list {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.technique-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  background: rgba(10,10,18,0.75);
+  opacity: 0;
+  transform: translateX(-16px);
+  backdrop-filter: blur(8px);
+  transition: background .25s;
+}
+.technique-row:hover { background: rgba(200,169,110,0.05); }
+.tr-num {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 1.1rem;
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: rgba(200,169,110,0.18);
+  line-height: 1;
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+.tr-body { padding: 1rem 1.3rem; }
+.tr-title {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: .3rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+.tr-title .tr-tag {
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .15em;
+  color: var(--gold);
+  border: 1px solid rgba(200,169,110,0.25);
+  padding: .1rem .45rem;
+  border-radius: 2px;
+}
+.tr-desc {
+  font-size: .84rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.65;
+  margin-bottom: .5rem;
+}
+
+/* ══════════════════════════════════════════
+   EXAMPLE BLOCK inside technique row
+══════════════════════════════════════════ */
+.ex-block {
+  font-family: var(--mono);
+  font-size: .75rem;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.3);
+  background: rgba(0,0,0,0.3);
+  border-left: 2px solid rgba(200,169,110,0.2);
+  padding: .65rem .9rem;
+  border-radius: 0 3px 3px 0;
+  margin-top: .4rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0;
+  transform: translateY(8px);
+}
+.ex-block .ex-bad  { color: rgba(248,113,113,0.6); display: block; }
+.ex-block .ex-good { color: rgba(52,211,153,0.7);  display: block; margin-top: .5rem; }
+
+/* ══════════════════════════════════════════
+   XML STRUCTURE BLOCK
+══════════════════════════════════════════ */
+.xml-block {
+  background: rgba(3,8,20,0.9);
+  border: 1px solid rgba(103,232,249,0.18);
+  border-radius: 4px;
+  padding: 1.5rem 1.7rem;
+  margin-top: 1.6rem;
+  position: relative;
+  opacity: 0;
+  transform: translateY(16px);
+  backdrop-filter: blur(12px);
+  cursor: copy;
+  transition: border-color .3s;
+}
+.xml-block:hover { border-color: rgba(103,232,249,0.4); }
+.xml-block::before {
+  content: 'XML TEMPLATE — doppio clic per copiare';
+  position: absolute;
+  top: -10px; left: 16px;
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .18em;
+  color: #67e8f9;
+  background: #03080a;
+  padding: 2px 10px;
+  border: 1px solid rgba(103,232,249,0.2);
+  border-radius: 2px;
+}
+.xml-block pre {
+  font-family: var(--mono);
+  font-size: .77rem;
+  line-height: 1.85;
+  color: rgba(255,255,255,0.35);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+.xml-block .xt { color: #67e8f9; }  /* tag  */
+.xml-block .xv { color: rgba(255,255,255,0.6); }  /* value */
+.xml-block .xc { color: rgba(200,169,110,0.5); font-style: italic; }  /* comment */
+
+/* ══════════════════════════════════════════
+   PROMPT READY-TO-USE (5 prompt pronti)
+══════════════════════════════════════════ */
+.prompt-ready {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+.pr-card {
+  background: rgba(10,10,20,0.8);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 4px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(14px);
+  backdrop-filter: blur(8px);
+  transition: border-color .25s;
+}
+.pr-card:hover { border-color: rgba(200,169,110,0.2); }
+.pr-header {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .7rem 1.2rem;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.pr-icon { font-size: 1rem; }
+.pr-title {
+  font-family: var(--serif);
+  font-size: .92rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  flex: 1;
+}
+.pr-copy-btn {
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .15em;
+  color: var(--gold);
+  border: 1px solid rgba(200,169,110,0.2);
+  background: none;
+  padding: .25rem .65rem;
+  border-radius: 2px;
+  cursor: copy;
+  transition: background .2s, border-color .2s;
+}
+.pr-copy-btn:hover { background: rgba(200,169,110,0.08); border-color: rgba(200,169,110,0.4); }
+.pr-body {
+  padding: 1rem 1.2rem;
+  font-family: var(--mono);
+  font-size: .77rem;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.75;
+}
+.pr-body .ph { color: var(--gold); }  /* placeholder */
+
+/* ══════════════════════════════════════════
+   SELF-EVAL LOOP visual
+══════════════════════════════════════════ */
+.eval-loop {
+  margin-top: 1.8rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: rgba(200,169,110,0.08);
+  border: 1px solid rgba(200,169,110,0.12);
+  opacity: 0;
+  transform: translateY(16px);
+}
+@media (max-width: 600px) { .eval-loop { grid-template-columns: 1fr; } }
+.eval-cell {
+  background: rgba(10,10,18,0.85);
+  padding: 1.2rem 1.1rem;
+  backdrop-filter: blur(8px);
+  text-align: center;
+}
+.eval-score {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: .35rem;
+}
+.eval-label {
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: .5rem;
+}
+.eval-note {
+  font-size: .8rem;
+  color: rgba(255,255,255,0.3);
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════
+   DIVIDERS / ORNAMENTS
+══════════════════════════════════════════ */
+.ornament {
+  text-align: center;
+  margin: 4rem 0 0;
+  opacity: 0;
+  color: rgba(200,169,110,0.3);
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  letter-spacing: .5em;
+}
+
+/* ══════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════ */
+#footer {
+  min-height: 30vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6rem 5vw;
+  position: relative;
+  z-index: 2;
+}
+#footer::before {
+  content: '';
+  position: absolute;
+  left: 10%; right: 10%; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.2), transparent);
+}
+.footer-inner { opacity: 0; }
+.footer-title {
+  font-family: var(--serif);
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  font-weight: 300;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: .8rem;
+}
+.footer-meta {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  line-height: 2;
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .scene { padding: 8vh 5vw; }
+  .tl { flex-direction: column; gap: .2rem; }
+  .tk { min-width: unset; }
+  #nav-dots { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<canvas id="bg-canvas"></canvas>
+
+<div id="grain"></div>
+
+<div id="progress"></div>
+
+<nav id="nav-dots">
+  <div class="nav-dot active" data-target="hero"></div>
+  <div class="nav-dot" data-target="s0"></div>
+  <div class="nav-dot" data-target="s1"></div>
+  <div class="nav-dot" data-target="s2"></div>
+  <div class="nav-dot" data-target="s3"></div>
+  <div class="nav-dot" data-target="s4"></div>
+  <div class="nav-dot" data-target="s5"></div>
+  <div class="nav-dot" data-target="s6"></div>
+  <div class="nav-dot" data-target="s7"></div>
+  <div class="nav-dot" data-target="sa"></div>
+  <div class="nav-dot" data-target="sb"></div>
+  <div class="nav-dot" data-target="sc"></div>
+  <div class="nav-dot" data-target="sd"></div>
+  <div class="nav-dot" data-target="se"></div>
+  <div class="nav-dot" data-target="s8"></div>
+</nav>
+
+<main>
+
+<section id="hero">
+  <div class="hero-eyebrow">Laboratorio Digitale · Costruzioni Aeronautiche</div>
+  <h1 class="hero-title">
+    Il Prompt<br>
+    <em>Perfetto</em>
+  </h1>
+  <p class="hero-subtitle">Come costruire richieste precise all'IA per ottenere esattamente quello che vuoi — con esempi pratici di Costruzioni Aeronautiche.</p>
+  <div class="hero-meta">
+    Prof. Ing. Raucci Biagio &nbsp;·&nbsp; ITIS E. Majorana, Cassino &nbsp;·&nbsp; A.S. 2025/2026
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <span>Scorri</span>
+  </div>
+</section>
+
+<section class="scene" id="s0">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 00</div>
+    <h2 class="scene-title">Perché l'IA <em>"non capisce"</em> quello che vuoi?</h2>
+    <p class="scene-body">Il problema non è l'IA: è il prompt. L'intelligenza artificiale risponde esattamente a ciò che le chiedi, non a ciò che intendi. Se il testo è vago, il risultato sarà generico.</p>
+
+    <div class="analogy-card">
+      <div class="card-tag">🔧 Analogia tecnica</div>
+      <p>Un disegno tecnico ambiguo produce un pezzo sbagliato — anche con l'operatore CNC più bravo. Il prompt è il tuo disegno tecnico. L'IA è il tornio. Se il disegno manca di quote e tolleranze, il risultato sarà errato.</p>
+    </div>
+
+    <div class="compare-pair">
+      <div class="cp-bad">
+        <p class="cp-label">❌ Prompt scarso</p>
+        <p class="cp-text">"Fammi qualcosa<br>sui profili alari"</p>
+      </div>
+      <div class="cp-good">
+        <p class="cp-label">✅ Prompt preciso</p>
+        <p class="cp-text">"Crea un file HTML singolo che disegna un profilo NACA 4 cifre con slider interattivi, equazioni dalla dispensa allegata, senza librerie esterne"</p>
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <div class="callout-title">💡 Regola d'oro</div>
+      <p>L'IA non legge la tua mente: legge il tuo testo. Ogni informazione aggiunta riduce l'incertezza. Un prompt è come una specifica di progetto: più è completo, meno sorprese ci sono.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s1">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 01</div>
+    <h2 class="scene-title">Le <em>6 componenti</em> di un prompt efficace</h2>
+    <p class="scene-body">Un prompt completo risponde sempre a queste sei domande, nell'ordine giusto. Ogni componente che manca è un'opportunità persa di precisione.</p>
+
+    <div class="comp-grid">
+      <div class="comp-cell" data-n="1">
+        <span class="comp-num">Componente 01</span>
+        <div class="comp-name">🎯 Ruolo</div>
+        <div class="comp-q">Chi sei?</div>
+        <div class="comp-ex">"Sei un ingegnere aerostrutturista con 20 anni di esperienza su velivoli FAR-23"</div>
+      </div>
+      <div class="comp-cell" data-n="2">
+        <span class="comp-num">Componente 02</span>
+        <div class="comp-name">📋 Contesto</div>
+        <div class="comp-q">Qual è la situazione?</div>
+        <div class="comp-ex">"Sto analizzando le sollecitazioni su un longherone in alluminio 2024-T3"</div>
+      </div>
+      <div class="comp-cell" data-n="3">
+        <span class="comp-num">Componente 03</span>
+        <div class="comp-name">🎚️ Parametri</div>
+        <div class="comp-q">Quali dati hai?</div>
+        <div class="comp-ex">"Apertura alare 8.4 m, carico limite 3.8g, t = 0.12 c"</div>
+      </div>
+      <div class="comp-cell" data-n="4">
+        <span class="comp-num">Componente 04</span>
+        <div class="comp-name">📐 Formato</div>
+        <div class="comp-q">Come deve risponderti?</div>
+        <div class="comp-ex">"Codice Python 3, funzioni commentate in italiano, max 80 righe"</div>
+      </div>
+      <div class="comp-cell" data-n="5">
+        <span class="comp-num">Componente 05</span>
+        <div class="comp-name">⚠️ Vincoli</div>
+        <div class="comp-q">Cosa NON deve fare?</div>
+        <div class="comp-ex">"Senza librerie esterne. Solo HTML/CSS/JS puro. NON usare jQuery."</div>
+      </div>
+      <div class="comp-cell" data-n="6">
+        <span class="comp-num">Componente 06</span>
+        <div class="comp-name">📎 Extra</div>
+        <div class="comp-q">Hai documenti di riferimento?</div>
+        <div class="comp-ex">"Usa l'eq. dalla dispensa: y_t = (t/0.20)·[0.2969√x…]"</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s2">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 02 — Approfondimento</div>
+    <h2 class="scene-title">Parla in <em>numeri</em>,<br>chiedi in formato</h2>
+    <p class="scene-body">I dati numerici con le unità di misura trasformano una risposta generica in una calcolata. Il formato atteso guida la struttura dell'output.</p>
+
+    <div class="compare-pair">
+      <div class="cp-bad">
+        <p class="cp-label">❌ Vago</p>
+        <p class="cp-text">"materiale leggero"<br><br>"carichi non troppo alti"<br><br>"un profilo abbastanza spesso"</p>
+      </div>
+      <div class="cp-good">
+        <p class="cp-label">✅ Preciso</p>
+        <p class="cp-text">"alluminio 2024-T3: E=73 GPa, σ_ult=483 MPa"<br><br>"fattore di carico n=+3.8/−1.52 (FAR Part 23)"<br><br>"NACA 2412: m=0.02, p=0.4, t=0.12"</p>
+      </div>
+    </div>
+
+    <div class="callout red">
+      <div class="callout-title">⚠️ Critico: le unità di misura</div>
+      <p>Scrivere "la corda è 1.2 e il carico è 3800" è un errore tecnico grave. La differenza tra N e kgf vale il fattore g = 9.81 — rilevante in ogni verifica strutturale. Scrivi sempre: "corda c = 1.2 m", "carico L = 3800 N".</p>
+    </div>
+
+    <div class="callout violet">
+      <div class="callout-title">⚡ Vincoli negativi espliciti</div>
+      <p>Usa NON in maiuscolo: "NON usare jQuery. NON aggiungere commenti ovvi. NON scrivere in inglese." La parola NON in maiuscolo rafforzata è tra le tecniche più efficaci nel prompt engineering.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s3">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 03 — Template</div>
+    <h2 class="scene-title">Il template<br><em>universale</em></h2>
+    <p class="scene-body">Usa questa struttura per ogni prompt. Sostituisci i segnaposto con i tuoi dati tecnici. Doppio clic per copiarlo.</p>
+
+    <div class="template-block" id="tpl-main">
+      <div class="tl"><span class="tk k1">[RUOLO]</span><span class="tv">Sei un ingegnere aerostrutturista / programmatore Python / professore di costruzioni.</span></div>
+      <div class="tl"><span class="tk k2">[CONTESTO]</span><span class="tv">Sto lavorando su [descrizione]. Il livello del destinatario è [principiante/esperto].</span></div>
+      <div class="tl"><span class="tk k3">[COMPITO]</span><span class="tv">Devo ottenere [descrizione precisa del risultato atteso].</span></div>
+      <div class="tl"><span class="tk k4">[PARAMETRI]</span><span class="tv">I dati tecnici sono: [lista valori numerici con unità di misura].</span></div>
+      <div class="tl"><span class="tk k4">[EQUAZIONI]</span><span class="tv">Usa le seguenti equazioni: [formule esplicite]. Norma: [FAR/CS/altra].</span></div>
+      <div class="tl"><span class="tk k5">[FORMATO]</span><span class="tv">Rispondi in italiano. Il formato deve essere [codice/tabella/lista/spiegazione].</span></div>
+      <div class="tl"><span class="tk k6">[VINCOLI]</span><span class="tv">NON usare [da evitare]. Lunghezza massima: [N righe].</span></div>
+      <div class="tl"><span class="tk k7">[VERIFICA]</span><span class="tv">Alla fine verifica che [condizione di controllo].</span></div>
+    </div>
+
+    <div class="callout amber">
+      <div class="callout-title">⚡ Template in una riga</div>
+      <p style="font-family:var(--mono);font-size:.78rem;line-height:1.8;color:rgba(255,255,255,0.5);">"[RUOLO]. Sto [CONTESTO]. Ho bisogno di [COMPITO]. Parametri: [dati+unità]. Formato: [tipo]. NON usare [vincoli]. Equazioni: [extra]."</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s4">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 04 — Esempio reale</div>
+    <h2 class="scene-title">Esempio: <em>dimensionamento<br>longherone</em></h2>
+    <p class="scene-body">Un prompt professionale per un problema tipico di Costruzioni Aeronautiche. Tutte e 6 le componenti sono presenti e identificabili. Doppio clic per copiarlo.</p>
+
+    <div class="template-block">
+      <div class="tl"><span class="tk k1">[RUOLO]</span><span class="tv">Sei un ingegnere strutturista aeronautico esperto in analisi di travi e strutture alari.</span></div>
+      <div class="tl"><span class="tk k2">[CONTESTO]</span><span class="tv">Sto dimensionando il longherone principale di un aliante biposto. Destinatario: studente di costruzioni aeronautiche (4° anno ITIS).</span></div>
+      <div class="tl"><span class="tk k3">[COMPITO]</span><span class="tv">Calcola il momento flettente massimo e verifica la sezione a cassone.</span></div>
+      <div class="tl"><span class="tk k4">[PARAMETRI]</span><span class="tv">b = 18 m, L = 9810 N, distribuzione ellittica. Alluminio 2024-T3: E=73 GPa, σ_ult=483 MPa.</span></div>
+      <div class="tl"><span class="tk k5">[FORMATO]</span><span class="tv">Prima i passaggi passo-passo in italiano. Poi il codice Python 3.</span></div>
+      <div class="tl"><span class="tk k6">[VINCOLI]</span><span class="tv">FAR Part 23, categoria normale. j = 1.5. Solo numpy.</span></div>
+      <div class="tl"><span class="tk k7">[VERIFICA]</span><span class="tv">Controlla σ_max &lt; σ_snervamento / j con MS &gt; 0.</span></div>
+    </div>
+
+    <div class="callout green">
+      <div class="callout-title">✅ Perché funziona</div>
+      <p>Ruolo esperto calibrato · dati numerici con unità SI · norma esplicita (FAR Part 23) · formato doppio (spiegazione + codice) · condizione di verifica finale autonoma.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s5">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 05 — Anatomia</div>
+    <h2 class="scene-title">Esempio: <em>web app NACA</em><br>— scomposto</h2>
+    <p class="scene-body">Il prompt usato nella Lezione 1, scomposto nelle 6 componenti. Riconoscerle in un prompt già usato aiuta a interiorizzare la struttura.</p>
+
+    <div style="margin-top:2rem;">
+      <div class="compare-pair" style="grid-template-columns:1fr;">
+        <div style="background:rgba(10,10,18,0.7);backdrop-filter:blur(8px);">
+          <div style="padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:1rem;align-items:flex-start;">
+            <span style="font-family:var(--mono);font-size:.65rem;color:#67e8f9;flex-shrink:0;min-width:120px;padding-top:2px;">1 · RUOLO</span>
+            <span style="font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,0.4);line-height:1.6;">(implicito) — avremmo potuto scrivere: "Sei un programmatore HTML/JS specializzato in applicazioni scientifiche"</span>
+          </div>
+          <div style="padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:1rem;align-items:flex-start;">
+            <span style="font-family:var(--mono);font-size:.65rem;color:#fbbf24;flex-shrink:0;min-width:120px;padding-top:2px;">2 · CONTESTO</span>
+            <span style="font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,0.4);line-height:1.6;">"web app in un singolo file HTML per disegnare profili alari NACA a 4 cifre"</span>
+          </div>
+          <div style="padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:1rem;align-items:flex-start;">
+            <span style="font-family:var(--mono);font-size:.65rem;color:#fde68a;flex-shrink:0;min-width:120px;padding-top:2px;">3 · PARAMETRI</span>
+            <span style="font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,0.4);line-height:1.6;">"slider m (0÷9), p (1÷9), t (1÷40)" — range precisi con significato fisico esplicitato</span>
+          </div>
+          <div style="padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:1rem;align-items:flex-start;">
+            <span style="font-family:var(--mono);font-size:.65rem;color:#86efac;flex-shrink:0;min-width:120px;padding-top:2px;">4 · FORMATO</span>
+            <span style="font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,0.4);line-height:1.6;">"singolo file HTML — canvas SVG — tabella 21 punti x, y_sup, y_inf"</span>
+          </div>
+          <div style="padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;gap:1rem;align-items:flex-start;">
+            <span style="font-family:var(--mono);font-size:.65rem;color:#d8b4fe;flex-shrink:0;min-width:120px;padding-top:2px;">5 · VINCOLI</span>
+            <span style="font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,0.4);line-height:1.6;">"Zero librerie esterne. Tutto in un solo index.html"</span>
+          </div>
+          <div style="padding:1rem 1.5rem;display:flex;gap:1rem;align-items:flex-start;">
+            <span style="font-family:var(--mono);font-size:.65rem;color:#fca5a5;flex-shrink:0;min-width:120px;padding-top:2px;">6 · EXTRA</span>
+            <span style="font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,0.4);line-height:1.6;">Equazioni NACA trascritte nel prompt: y_t = (t/0.20)·[0.2969√x − 0.1260x − 0.3516x² + …]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <div class="callout-title">💡 La chiave del risultato preciso</div>
+      <p>Le equazioni esatte dalla dispensa nella componente 6 sono il motivo per cui l'IA ha implementato il polinomio NACA corretto al quarto decimale. Senza di esse, avrebbe usato approssimazioni diverse.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s6">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 06 — Iterazione</div>
+    <h2 class="scene-title">Il prompt è un <em>processo</em>,<br>non un evento</h2>
+    <p class="scene-body">Raramente il primo prompt è perfetto. Il ciclo di raffinamento — scrivi, osserva, correggi — è la vera competenza da sviluppare.</p>
+
+    <div class="cycle-row">
+      <div class="cycle-step">
+        <span class="c-icon">📝</span>
+        <div class="c-n">Passo 01</div>
+        <div class="c-title">Primo prompt</div>
+        <div class="c-desc">Usa il template. Sii preciso su parametri e formato.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🔍</span>
+        <div class="c-n">Passo 02</div>
+        <div class="c-title">Analizza</div>
+        <div class="c-desc">Il risultato è corretto? Manca qualcosa?</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🔧</span>
+        <div class="c-n">Passo 03</div>
+        <div class="c-title">Raffina</div>
+        <div class="c-desc">Aggiungi il vincolo mancante o correggi il parametro.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">✅</span>
+        <div class="c-n">Passo 04</div>
+        <div class="c-title">Risultato</div>
+        <div class="c-desc">Output tecnico corretto, pronto per il deploy.</div>
+      </div>
+    </div>
+
+    <div class="callout amber" style="margin-top:2rem;">
+      <div class="callout-title">Regola d'oro del raffinamento</div>
+      <p>Non accettate mai il primo output senza verificarlo. Le formule e i ragionamenti vanno sempre controllati con il materiale originale del docente. <strong style="color:rgba(255,255,255,0.75);">La responsabilità della correttezza è vostra.</strong></p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s7">
+  <div class="scene-inner">
+    <div class="scene-label">Fase 07 — Errori</div>
+    <h2 class="scene-title">I <em>6 errori</em> più comuni</h2>
+    <p class="scene-body">Riconoscerli è il primo passo per evitarli. Ogni errore ha una soluzione immediata.</p>
+
+    <div class="errors-grid">
+      <div class="err-cell">
+        <div class="err-n">⚠️ Errore 01</div>
+        <div class="err-title">Il prompt telescopico</div>
+        <div class="err-bad">❌ "Fammi un programma che calcola le coordinate e poi le visualizza e aggiunge il grafico e la tabella…"</div>
+        <div class="err-fix">✅ Dividi in prompt separati: prima il calcolo, poi la visualizzazione.</div>
+      </div>
+      <div class="err-cell">
+        <div class="err-n">⚠️ Errore 02</div>
+        <div class="err-title">Senza unità di misura</div>
+        <div class="err-bad">❌ "La corda è 1.2 e il carico è 3800"</div>
+        <div class="err-fix">✅ "corda c = 1.2 m", "carico L = 3800 N". L'IA non distingue N da kgf.</div>
+      </div>
+      <div class="err-cell">
+        <div class="err-n">⚠️ Errore 03</div>
+        <div class="err-title">Senza contesto tecnologico</div>
+        <div class="err-bad">❌ "Scrivi il codice per il profilo NACA"</div>
+        <div class="err-fix">✅ "In Python 3, senza librerie esterne" oppure "In HTML vanilla, un solo file".</div>
+      </div>
+      <div class="err-cell">
+        <div class="err-n">⚠️ Errore 04</div>
+        <div class="err-title">Accettare il primo risultato</div>
+        <div class="err-bad">❌ Il codice ha un errore ma non lo segnali.</div>
+        <div class="err-fix">✅ Incolla l'errore esatto. Cita la riga e chiedi la correzione mirata.</div>
+      </div>
+      <div class="err-cell">
+        <div class="err-n">⚠️ Errore 05</div>
+        <div class="err-title">Linguaggio naturale vago</div>
+        <div class="err-bad">❌ "Fai qualcosa di bello per visualizzare le forze sull'ala"</div>
+        <div class="err-fix">✅ "Diagramma di taglio e momento, distribuzione ellittica, SVG, assi in N e N·m."</div>
+      </div>
+      <div class="err-cell">
+        <div class="err-n">⚠️ Errore 06</div>
+        <div class="err-title">Non dare la fonte</div>
+        <div class="err-bad">❌ Chiedi il calcolo del pannello senza fornire le equazioni di riferimento.</div>
+        <div class="err-fix">✅ Allega o trascrivi le formule dalla dispensa. Altrimenti l'IA usa formule generiche.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s8">
+  <div class="scene-inner">
+    <div class="scene-label">Appendice</div>
+    <h2 class="scene-title">Quick <em>Reference</em></h2>
+    <p class="scene-body">Tienila aperta mentre scrivi i tuoi prompt.</p>
+
+    <div class="qr-container">
+      <div class="qr-label">Le 6 componenti</div>
+      <div class="qr-row">
+        <span class="pill pc1">01 · RUOLO</span>
+        <span class="pill pc2">02 · CONTESTO</span>
+        <span class="pill pc3">03 · PARAMETRI (con unità!)</span>
+        <span class="pill pc4">04 · FORMATO OUTPUT</span>
+        <span class="pill pc5">05 · VINCOLI (usa NON)</span>
+        <span class="pill pc6">06 · CONTESTO EXTRA</span>
+      </div>
+
+      <div class="qr-divider"></div>
+
+      <div class="qr-label">I 6 errori da non fare</div>
+      <div class="qr-row">
+        <span class="pill perr">⚠️ Prompt telescopico</span>
+        <span class="pill perr">⚠️ Senza unità di misura</span>
+        <span class="pill perr">⚠️ Senza contesto SW</span>
+        <span class="pill perr">⚠️ No feedback errori</span>
+        <span class="pill perr">⚠️ Linguaggio vago</span>
+        <span class="pill perr">⚠️ Senza fonte/formule</span>
+      </div>
+
+      <div class="qr-divider"></div>
+
+      <div class="qr-label">Template in una riga</div>
+      <div class="template-block" style="margin-top:.6rem;">
+        <div class="tl">
+          <span style="font-family:var(--mono);font-size:.78rem;line-height:1.8;color:rgba(255,255,255,0.5);">
+            "<span style="color:#67e8f9;">[RUOLO]</span>. Sto <span style="color:#fbbf24;">[CONTESTO]</span>. Ho bisogno di <span style="color:rgba(255,255,255,0.7);">[COMPITO]</span>. Parametri: <span style="color:#fde68a;">[dati+unità]</span>. Formato: <span style="color:#86efac;">[tipo]</span>. NON usare <span style="color:#d8b4fe;">[vincoli]</span>. Equazioni: <span style="color:#fca5a5;">[extra]</span>."
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="sa">
+  <div class="scene-inner">
+    <div class="level-badge lv2"><span class="lb-dot"></span>Livello 2 — Intermedio</div>
+    <div class="scene-label">Atto IX</div>
+    <h2 class="scene-title">Mostra un <em>esempio</em>.<br>Non descriverlo.</h2>
+    <p class="scene-body">Un solo esempio concreto vale dieci paragrafi di istruzioni astratte. L'IA effettua pattern-matching sull'esempio con precisione maggiore rispetto all'interpretazione di descrizioni verbali.</p>
+
+    <div class="technique-list">
+      <div class="technique-row">
+        <div class="tr-num">T1</div>
+        <div class="tr-body">
+          <div class="tr-title">Dai un esempio di output <span class="tr-tag">SHOW DON'T TELL</span></div>
+          <div class="tr-desc">Invece di descrivere il formato in modo astratto, mostra a Claude un output già fatto. Chiedi di replicare esattamente quella struttura per i casi successivi.</div>
+          <div class="ex-block"><span class="ex-bad">❌ "Organizza i dati in un formato strutturato con sezioni e sottosezioni"</span><span class="ex-good">✅ "Ecco un esempio del formato atteso:
+Grandezza: Portanza L
+Formula: L = ½ · ρ · V² · S · C_L
+Unità: Newton [N]
+Nota: dipende dal quadrato della velocità
+
+Ora scrivi tre voci analoghe per: Resistenza, Momento, Spinta."</span></div>
+        </div>
+      </div>
+      <div class="technique-row">
+        <div class="tr-num">T2</div>
+        <div class="tr-body">
+          <div class="tr-title">Concatena i prompt <span class="tr-tag">CHAIN PROMPTING</span></div>
+          <div class="tr-desc">I compiti complessi producono risultati migliori se spezzati in passi sequenziali. Ogni passo lavora sull'output raffinato del precedente — la qualità si accumula.</div>
+          <div class="ex-block">Prompt 1 → Ricerca: "Identifica i 5 principali modi di guasto strutturale nelle ali in composito. Sintesi in 2 frasi per ciascuno."
+Prompt 2 → Analisi: "Tra questi, individua i 3 più critici per un aliante ultraleggero. Motiva in base al rapporto rischio/frequenza."
+Prompt 3 → Schema: "Crea l'indice di un report tecnico su questi 3 modi di guasto."
+Prompt 4 → Stesura: "Scrivi il report completo seguendo quell'indice. 1.800 parole, italiano tecnico."</div>
+        </div>
+      </div>
+      <div class="technique-row">
+        <div class="tr-num">T3</div>
+        <div class="tr-body">
+          <div class="tr-title">Impila i vincoli negativi <span class="tr-tag">CONSTRAINT STACK</span></div>
+          <div class="tr-desc">Sei-dieci vincoli negativi in serie sono il modo più rapido per eliminare il tono da intelligenza artificiale generica. Il risultato suona come una persona con opinioni vere.</div>
+          <div class="ex-block">NON usare frasi di riempimento.
+NON iniziare frasi con "È importante notare" o "In conclusione".
+NON usare le parole "sinergia", "paradigma", "ecosistema", "leverage".
+NON aggiungere avvertimenti o clausole di esclusione superflue.
+NON usare la forma passiva dove si può usare l'attiva.
+NON ripetere concetti già espressi in precedenza.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="sb">
+  <div class="scene-inner">
+    <div class="level-badge lv2"><span class="lb-dot"></span>Livello 2 — Intermedio</div>
+    <div class="scene-label">Atto X</div>
+    <h2 class="scene-title">Chiedi all'IA di<br><em>valutarsi da sola</em></h2>
+    <p class="scene-body">Il ciclo di auto-valutazione è significativamente più efficace sui modelli recenti. Claude intercetta le proprie lacune e le corregge prima che l'output ti raggiunga.</p>
+
+    <div class="callout gold">
+      <div class="callout-title">⚡ La tecnica</div>
+      <p>Dopo aver scritto la risposta, chiedi a Claude di valutarla su tre criteri con un punteggio da 1 a 10. Se un punteggio è inferiore a 8, deve migliorare quella dimensione e mostrare solo la versione migliorata.</p>
+    </div>
+
+    <div class="eval-loop">
+      <div class="eval-cell">
+        <div class="eval-score">9.2</div>
+        <div class="eval-label">Accuratezza</div>
+        <div class="eval-note">Le formule rispecchiano la norma FAR Part 23 § 337?</div>
+      </div>
+      <div class="eval-cell">
+        <div class="eval-score">7.4</div>
+        <div class="eval-label">Chiarezza</div>
+        <div class="eval-note">← sotto 8: Claude riscrive questa sezione</div>
+      </div>
+      <div class="eval-cell">
+        <div class="eval-score">8.8</div>
+        <div class="eval-label">Utilità</div>
+        <div class="eval-note">L'output serve allo studente di 4° anno ITIS?</div>
+      </div>
+    </div>
+
+    <div class="template-block" style="margin-top:1.8rem;">
+      <div class="tl"><span class="tk k3">[SELF-EVAL]</span><span class="tv">Dopo aver scritto la risposta, valutala da 1 a 10 su: accuratezza tecnica, chiarezza espositiva, utilità per il mio contesto specifico. Se uno dei punteggi è inferiore a 8, migliora quella dimensione. Mostra solo la versione finale migliorata, non i punteggi.</span></div>
+    </div>
+
+    <div class="callout amber">
+      <div class="callout-title">💡 Ordine del contesto — Context-First</div>
+      <p>Inserisci il materiale di riferimento <strong>sopra</strong> le istruzioni, non sotto. Claude elabora il contesto prima di ricevere il compito — la comprensione è più profonda. Metti i dati in cima, poi le istruzioni in fondo.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="sc">
+  <div class="scene-inner">
+    <div class="level-badge lv3"><span class="lb-dot"></span>Livello 3 — Esperto</div>
+    <div class="scene-label">Atto XI</div>
+    <h2 class="scene-title">XML: la lingua<br><em>nativa di Claude</em></h2>
+    <p class="scene-body">Claude è stato addestrato su prompt strutturati. I tag XML eliminano ogni ambiguità su dove finisce un'istruzione e ne inizia un'altra. Il risultato è più coerente, più strutturato, meno soggetto a interpretazioni errate.</p>
+
+    <div class="xml-block" id="xml-main">
+      <pre><span class="xt">&lt;ruolo&gt;</span><span class="xv">Sei un analista strutturista aeronautico specializzato in meccanismi di guasto</span><span class="xt">&lt;/ruolo&gt;</span>
+
+<span class="xt">&lt;contesto&gt;</span><span class="xv">Sto preparando una relazione tecnica per il docente di Costruzioni Aeronautiche.
+Il destinatario è uno studente di 4° anno ITIS con buone basi di statica.</span><span class="xt">&lt;/contesto&gt;</span>
+
+<span class="xt">&lt;compito&gt;</span><span class="xv">Analizza i dati allegati e crea un sommario tecnico da presentazione</span><span class="xt">&lt;/compito&gt;</span>
+
+<span class="xt">&lt;formato_output&gt;</span>
+  <span class="xv">- Sommario esecutivo (3 frasi)
+  - Tabella metriche (Portanza, Resistenza, L/D ratio, V_stall)
+  - 3 punti di forza con dato di supporto
+  - 2 criticità con azione raccomandata</span>
+<span class="xt">&lt;/formato_output&gt;</span>
+
+<span class="xt">&lt;vincoli&gt;</span>
+  <span class="xv">- Solo dati certi, nessuna speculazione senza indicarla esplicitamente
+  - Usa numeri precisi, non approssimazioni
+  - Lunghezza totale sotto le 1.200 parole</span>
+<span class="xt">&lt;/vincoli&gt;</span>
+
+<span class="xt">&lt;verifica&gt;</span><span class="xv">Controlla che ogni metrica nella tabella abbia unità di misura esplicita</span><span class="xt">&lt;/verifica&gt;</span></pre>
+    </div>
+
+    <div class="callout violet">
+      <div class="callout-title">🎭 Tecnica Multi-Persona</div>
+      <p>Chiedi a Claude di analizzare una decisione da tre prospettive: il progettista strutturista (massimizza sicurezza), il responsabile dei costi (minimizza peso e materiale), il pilota collaudatore (massimizza affidabilità in volo). Ciascuno espone la sua tesi in 3-4 frasi. Poi Claude sintetizza la raccomandazione identificando i trade-off. Il risultato è un'analisi drammaticamente più ricca di qualsiasi "analizza questo" generico.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="sd">
+  <div class="scene-inner">
+    <div class="level-badge lv3"><span class="lb-dot"></span>Livello 3 — Esperto</div>
+    <div class="scene-label">Atto XII</div>
+    <h2 class="scene-title">I <em>5 prompt</em><br>universali</h2>
+    <p class="scene-body">Cinque template pronti all'uso per i cinque compiti più comuni. Salva, personalizza le variabili tra parentesi, riusa. Ogni doppio clic copia il template.</p>
+
+    <div class="prompt-ready">
+      <div class="pr-card">
+        <div class="pr-header">
+          <span class="pr-icon">🔍</span>
+          <span class="pr-title">Prompt di Analisi</span>
+          <button class="pr-copy-btn" onclick="copyPrompt(this)">COPIA</button>
+        </div>
+        <div class="pr-body">
+          Sei un analista di <span class="ph">[dominio]</span> con 15 anni di esperienza. Analizza <span class="ph">[oggetto]</span> e identifica le 3 criticità più significative. Per ciascuna: (1) descrizione precisa, (2) evidenza numerica a supporto, (3) impatto su <span class="ph">[pubblico]</span>, (4) azione raccomandata. Usa dati specifici dove possibile. NON aggiungere avvertimenti superflui o clausole generiche.
+        </div>
+      </div>
+
+      <div class="pr-card">
+        <div class="pr-header">
+          <span class="pr-icon">✍️</span>
+          <span class="pr-title">Prompt di Scrittura</span>
+          <button class="pr-copy-btn" onclick="copyPrompt(this)">COPIA</button>
+        </div>
+        <div class="pr-body">
+          Sei un autore tecnico specializzato in <span class="ph">[campo]</span>. Scrivi un <span class="ph">[formato]</span> su <span class="ph">[argomento]</span> per <span class="ph">[pubblico]</span>. Apri con un dato sorprendente o un'affermazione che sfida un'assunzione comune. Paragrafi brevi. Ogni frase deve insegnare qualcosa, provare qualcosa o portare avanti il ragionamento. NON usare frasi di riempimento, gergo aziendale o forma passiva. Target: <span class="ph">[N]</span> parole.
+        </div>
+      </div>
+
+      <div class="pr-card">
+        <div class="pr-header">
+          <span class="pr-icon">⚖️</span>
+          <span class="pr-title">Prompt Decisionale</span>
+          <button class="pr-copy-btn" onclick="copyPrompt(this)">COPIA</button>
+        </div>
+        <div class="pr-body">
+          Devo scegliere tra <span class="ph">[Opzione A]</span> e <span class="ph">[Opzione B]</span>. Contesto: <span class="ph">[situazione]</span>. Analizza ciascuna opzione su questi criteri: <span class="ph">[criterio 1]</span>, <span class="ph">[criterio 2]</span>, <span class="ph">[criterio 3]</span>. Per ogni criterio assegna un punteggio 1-10 e motiva in una frase. Poi dammi la tua raccomandazione con livello di confidenza (alto/medio/basso) e indica quale informazione aggiuntiva cambierebbe maggiormente la tua risposta.
+        </div>
+      </div>
+
+      <div class="pr-card">
+        <div class="pr-header">
+          <span class="pr-icon">🔧</span>
+          <span class="pr-title">Prompt Problem-Solving</span>
+          <button class="pr-copy-btn" onclick="copyPrompt(this)">COPIA</button>
+        </div>
+        <div class="pr-body">
+          Sto riscontrando <span class="ph">[problema]</span>. Tentativi già effettuati: <span class="ph">[tentativi]</span>. Ipotesi sulla causa: <span class="ph">[ipotesi]</span>. Individua la causa più probabile. Proponi 3 soluzioni in ordine di probabilità di successo. Per ciascuna: stima dello sforzo necessario e probabilità di riuscita. Raccomanda il percorso migliore.
+        </div>
+      </div>
+
+      <div class="pr-card">
+        <div class="pr-header">
+          <span class="pr-icon">📋</span>
+          <span class="pr-title">Prompt di Feedback</span>
+          <button class="pr-copy-btn" onclick="copyPrompt(this)">COPIA</button>
+        </div>
+        <div class="pr-body">
+          Revisiona <span class="ph">[mio lavoro]</span> rispetto a questi criteri: <span class="ph">[criteri]</span>. Per ciascuno: punteggio 1-10 con spiegazione specifica di cosa funziona e cosa no. Identifica il singolo miglioramento ad impatto più alto. Riscrivi la sezione più debole mostrando come appare a livello "eccellente". Sii diretto: preferisco una verità scomoda a un'incoraggiamento generico.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="se">
+  <div class="scene-inner">
+    <div class="scene-label">Atto XIII — Sintesi</div>
+    <h2 class="scene-title">Il prompt è un<br><em>artefatto del pensiero</em></h2>
+    <p class="scene-body">Il prompt engineering non riguarda la memorizzazione di trucchi. Riguarda la chiarezza del pensiero. Scrivere un prompt eccellente richiede di sapere esattamente cosa si vuole, chi è il pubblico, come appare un risultato "eccellente" e quali problemi evitare.</p>
+
+    <div class="analogy-card">
+      <div class="card-tag">🎯 La verità scomoda</div>
+      <p>La maggior parte delle persone non scrive prompt mediocri perché è poco intelligente. Li scrive perché non ha ancora chiarito il proprio pensiero. L'IA è uno specchio: restituisce esattamente il livello di chiarezza che hai messo nel prompt. Un prompt vago è il sintomo di un'idea ancora nebulosa.</p>
+    </div>
+
+    <div class="technique-list" style="margin-top:2rem;">
+      <div class="technique-row">
+        <div class="tr-num">01</div>
+        <div class="tr-body">
+          <div class="tr-title">I tag XML forzano la separazione delle istruzioni</div>
+          <div class="tr-desc">Non sono un formato tecnico opzionale: ti costringono a separare ruolo, contesto, compito, formato. Questo è un esercizio di pensiero prima ancora che di prompt.</div>
+        </div>
+      </div>
+      <div class="technique-row">
+        <div class="tr-num">02</div>
+        <div class="tr-body">
+          <div class="tr-title">I vincoli negativi forzano l'articolazione di ciò che non vuoi</div>
+          <div class="tr-desc">La maggior parte delle persone sa cosa vuole solo in modo vago, ma sa con precisione cosa non vuole. I vincoli negativi sfruttano questa asimmetria cognitiva.</div>
+        </div>
+      </div>
+      <div class="technique-row">
+        <div class="tr-num">03</div>
+        <div class="tr-body">
+          <div class="tr-title">Gli esempi forzano la definizione di "buono"</div>
+          <div class="tr-desc">Non puoi mostrare un esempio di output desiderato senza prima avere in testa come appare. Trovare o costruire quell'esempio è già metà del lavoro.</div>
+        </div>
+      </div>
+      <div class="technique-row">
+        <div class="tr-num">04</div>
+        <div class="tr-body">
+          <div class="tr-title">Il raffinamento iterativo è il metodo — non l'eccezione</div>
+          <div class="tr-desc">I migliori prompt engineer non si aspettano la perfezione al primo tentativo. Si aspettano un buon punto di partenza e lo affinano con feedback specifici e numerati.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout green" style="margin-top:2rem;">
+      <div class="callout-title">🧭 Il percorso di studio</div>
+      <p>Inizia con il framework a 6 componenti — usalo per i prossimi cinque prompt. Poi aggiungi una tecnica nuova per settimana: prima gli esempi, poi il chain prompting, poi i vincoli negativi impilati, poi l'XML, poi il ciclo di auto-valutazione. In sei settimane il prompting esperto diventa riflesso automatico.</p>
+    </div>
+  </div>
+</section>
+
+
+<footer id="footer">
+  <div class="footer-inner">
+    <div class="footer-title">Ora sai scrivere prompt perfetti.</div>
+    <div class="footer-meta">
+      Prof. Ing. Raucci Biagio<br>
+      ITIS E. Majorana · Cassino<br>
+      A.S. 2025/2026 · Costruzioni Aeronautiche · Laboratorio Digitale
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   THREE.JS — fluid ink background
+══════════════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  // Shader material — fluid noise reacts to mouse + scroll color
+  const uniforms = {
+    uTime:       { value: 0 },
+    uMouse:      { value: new THREE.Vector2(0.5, 0.5) },
+    uMouseVel:   { value: new THREE.Vector2(0, 0) },
+    uColorA:     { value: new THREE.Color(0.04, 0.04, 0.07) },
+    uColorB:     { value: new THREE.Color(0.06, 0.08, 0.14) },
+    uColorAccent:{ value: new THREE.Color(0.20, 0.17, 0.11) },
+    uIntensity:  { value: 0.0 },
+  };
+
+  const geo = new THREE.PlaneGeometry(2, 2);
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = vec4(position, 1.0); }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec2  uMouse;
+      uniform vec2  uMouseVel;
+      uniform vec3  uColorA;
+      uniform vec3  uColorB;
+      uniform vec3  uColorAccent;
+      uniform float uIntensity;
+      varying vec2  vUv;
+
+      // simplex-like noise
+      vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
+      vec2 mod289(vec2 x){return x-floor(x*(1./289.))*289.;}
+      vec3 permute(vec3 x){return mod289(((x*34.)+1.)*x);}
+      float snoise(vec2 v){
+        const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+        vec2 i=floor(v+dot(v,C.yy));
+        vec2 x0=v-i+dot(i,C.xx);
+        vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
+        vec4 x12=x0.xyxy+C.xxzz;
+        x12.xy-=i1;
+        i=mod289(i);
+        vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
+        vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
+        m=m*m; m=m*m;
+        vec3 x2=2.*fract(p*C.www)-1.;
+        vec3 h=abs(x2)-0.5;
+        vec3 ox=floor(x2+0.5);
+        vec3 a0=x2-ox;
+        m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
+        vec3 g;
+        g.x=a0.x*x0.x+h.x*x0.y;
+        g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+        return 130.*dot(m,g);
+      }
+
+      void main() {
+        vec2 uv = vUv;
+
+        // multi-octave flow noise
+        float t = uTime * 0.12;
+        float n1 = snoise(uv * 2.8 + vec2(t * 0.3, t * 0.18));
+        float n2 = snoise(uv * 5.2 + vec2(-t * 0.25, t * 0.4) + n1 * 0.3);
+        float n3 = snoise(uv * 1.4 + vec2(t * 0.1, -t * 0.15) + n2 * 0.2);
+        float flow = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.5 + 0.5;
+
+        // mouse ink splash
+        vec2 md = uv - uMouse;
+        float md2 = dot(md, md);
+        float splash = exp(-md2 * 8.0) * length(uMouseVel) * 12.0;
+        float ripple = snoise(uv * 12.0 - uMouse * 5.0 + uTime * 0.5) * 0.5 + 0.5;
+        splash *= ripple;
+
+        // base gradient
+        vec3 col = mix(uColorA, uColorB, flow);
+
+        // accent inject from mouse
+        col = mix(col, uColorAccent, splash * uIntensity * 0.6 + flow * uIntensity * 0.15);
+
+        // dark vignette
+        float vig = 1.0 - smoothstep(0.3, 1.1, length(uv - 0.5) * 1.5);
+        col *= vig;
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh);
+
+  // Section color palette — one per section
+  const sectionColors = [
+    { a:[0.04,0.04,0.07], b:[0.06,0.08,0.14], ac:[0.20,0.17,0.11] }, // hero
+    { a:[0.04,0.04,0.08], b:[0.05,0.06,0.13], ac:[0.15,0.10,0.04] }, // s0 void
+    { a:[0.03,0.05,0.09], b:[0.05,0.09,0.16], ac:[0.10,0.12,0.22] }, // s1 navy
+    { a:[0.04,0.07,0.04], b:[0.04,0.12,0.07], ac:[0.08,0.18,0.10] }, // s2 forest
+    { a:[0.07,0.05,0.02], b:[0.12,0.09,0.03], ac:[0.22,0.15,0.04] }, // s3 amber
+    { a:[0.06,0.04,0.10], b:[0.10,0.06,0.16], ac:[0.18,0.10,0.28] }, // s4 violet
+    { a:[0.02,0.07,0.08], b:[0.04,0.12,0.14], ac:[0.05,0.18,0.20] }, // s5 teal
+    { a:[0.08,0.03,0.04], b:[0.14,0.05,0.06], ac:[0.22,0.06,0.08] }, // s6 crimson
+    { a:[0.04,0.04,0.07], b:[0.07,0.07,0.12], ac:[0.12,0.10,0.06] }, // s7 neutral
+    { a:[0.03,0.05,0.04], b:[0.05,0.09,0.08], ac:[0.08,0.14,0.10] }, // s8 sage
+    // new acts
+    { a:[0.04,0.08,0.06], b:[0.06,0.14,0.10], ac:[0.08,0.20,0.12] }, // sa emerald
+    { a:[0.04,0.06,0.10], b:[0.06,0.10,0.18], ac:[0.08,0.12,0.26] }, // sb deep blue
+    { a:[0.02,0.06,0.10], b:[0.04,0.10,0.16], ac:[0.06,0.18,0.22] }, // sc teal-blue
+    { a:[0.08,0.06,0.02], b:[0.14,0.10,0.04], ac:[0.24,0.18,0.06] }, // sd warm gold
+    { a:[0.06,0.02,0.08], b:[0.10,0.04,0.14], ac:[0.20,0.08,0.24] }, // se violet-deep
+  ];
+
+  let currentPalette = 0;
+  let targetA = new THREE.Color(...sectionColors[0].a);
+  let targetB = new THREE.Color(...sectionColors[0].b);
+  let targetAC = new THREE.Color(...sectionColors[0].ac);
+
+  window.setBgPalette = function(idx) {
+    idx = Math.min(idx, sectionColors.length - 1);
+    if (idx === currentPalette) return;
+    currentPalette = idx;
+    const p = sectionColors[idx];
+    targetA.setRGB(...p.a);
+    targetB.setRGB(...p.b);
+    targetAC.setRGB(...p.ac);
+  };
+
+  // animate loop
+  let lastTime = 0;
+  function animate(ts) {
+    requestAnimationFrame(animate);
+    const dt = Math.min((ts - lastTime) / 1000, 0.05);
+    lastTime = ts;
+    uniforms.uTime.value += dt;
+
+    // smooth color lerp
+    uniforms.uColorA.value.lerp(targetA, 0.025);
+    uniforms.uColorB.value.lerp(targetB, 0.025);
+    uniforms.uColorAccent.value.lerp(targetAC, 0.025);
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+
+  // resize
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // mouse
+  let prevMouse = { x: 0.5, y: 0.5 };
+  window.addEventListener('mousemove', e => {
+    const nx = e.clientX / window.innerWidth;
+    const ny = 1 - e.clientY / window.innerHeight;
+    uniforms.uMouseVel.value.set(nx - prevMouse.x, ny - prevMouse.y);
+    uniforms.uMouse.value.set(nx, ny);
+    prevMouse = { x: nx, y: ny };
+    uniforms.uIntensity.value = Math.min(uniforms.uIntensity.value + 0.3, 1.0);
+  });
+
+  // decay velocity
+  setInterval(() => {
+    uniforms.uMouseVel.value.multiplyScalar(0.85);
+    uniforms.uIntensity.value *= 0.96;
+  }, 16);
+})();
+
+/* ══════════════════════════════════════════════════════
+   LENIS smooth scroll
+══════════════════════════════════════════════════════ */
+const lenis = new Lenis({
+  duration: 1.4,
+  easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  direction: 'vertical',
+  gestureDirection: 'vertical',
+  smooth: true,
+  mouseMultiplier: 1.0,
+  smoothTouch: false,
+  touchMultiplier: 2,
+  infinite: false,
+});
+
+function rafCallback(time) {
+  lenis.raf(time);
+  requestAnimationFrame(rafCallback);
+}
+requestAnimationFrame(rafCallback);
+
+// connect GSAP ScrollTrigger with Lenis
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add(time => lenis.raf(time * 1000));
+gsap.ticker.lagSmoothing(0);
+
+/* ══════════════════════════════════════════════════════
+   CUSTOM CURSOR
+══════════════════════════════════════════════════════ */
+const dot  = document.getElementById('cursor-dot');
+const ring = document.getElementById('cursor-ring');
+let cx = 0, cy = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+
+(function cursorLoop() {
+  requestAnimationFrame(cursorLoop);
+  rx += (cx - rx) * 0.12;
+  ry += (cy - ry) * 0.12;
+  dot.style.left  = cx + 'px';
+  dot.style.top   = cy + 'px';
+  ring.style.left = rx + 'px';
+  ring.style.top  = ry + 'px';
+})();
+
+/* ══════════════════════════════════════════════════════
+   GSAP + SCROLLTRIGGER — cinematic reveals
+══════════════════════════════════════════════════════ */
+gsap.registerPlugin(ScrollTrigger);
+
+// Progress bar
+lenis.on('scroll', ({ progress }) => {
+  document.getElementById('progress').style.width = (progress * 100) + '%';
+});
+
+// Hero entrance
+const heroTl = gsap.timeline({ delay: 0.3 });
+heroTl
+  .to('.hero-eyebrow',  { opacity:1, y:0, duration:1.2, ease:'expo.out' })
+  .to('.hero-title',    { opacity:1, y:0, duration:1.4, ease:'expo.out' }, '-=0.8')
+  .to('.hero-subtitle', { opacity:1, y:0, duration:1.2, ease:'expo.out' }, '-=0.9')
+  .to('.hero-meta',     { opacity:1, duration:1.0, ease:'power2.out' }, '-=0.6')
+  .to('.scroll-hint',   { opacity:1, duration:0.8, ease:'power2.out' }, '-=0.4');
+
+// Section reveal factory
+function revealScene(sectionId, paletteIdx) {
+  const section = document.querySelector(sectionId);
+  if (!section) return;
+
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top 70%',
+    onEnter: () => window.setBgPalette(paletteIdx),
+    onEnterBack: () => window.setBgPalette(paletteIdx),
+  });
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: section,
+      start: 'top 72%',
+      end: 'bottom 20%',
+      toggleActions: 'play none none reverse',
+    }
+  });
+
+  const label = section.querySelector('.scene-label');
+  const title = section.querySelector('.scene-title');
+  const body  = section.querySelector('.scene-body');
+
+  if (label) tl.to(label, { opacity:1, duration:0.6, ease:'power3.out' }, 0);
+  if (title) tl.to(title, { opacity:1, y:0, duration:1.0, ease:'expo.out' }, 0.1);
+  if (body)  tl.to(body,  { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.25);
+
+  // staggered children
+  const analogyCard = section.querySelector('.analogy-card');
+  if (analogyCard) tl.to(analogyCard, { opacity:1, x:0, duration:0.9, ease:'power3.out' }, 0.35);
+
+  const comparePairs = section.querySelectorAll('.compare-pair');
+  comparePairs.forEach(el => tl.to(el, { opacity:1, y:0, duration:0.8, ease:'power3.out' }, 0.4));
+
+  const callouts = section.querySelectorAll('.callout');
+  callouts.forEach((el, i) => tl.to(el, { opacity:1, x:0, duration:0.8, ease:'power3.out' }, 0.45 + i * 0.1));
+
+  const compCells = section.querySelectorAll('.comp-cell');
+  if (compCells.length) {
+    tl.to(compCells, {
+      opacity: 1, y: 0, duration: 0.7,
+      ease: 'power3.out',
+      stagger: { amount: 0.5, from: 'start' }
+    }, 0.35);
+  }
+
+  const tplBlock = section.querySelector('.template-block');
+  if (tplBlock) tl.to(tplBlock, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4);
+
+  const errCells = section.querySelectorAll('.err-cell');
+  if (errCells.length) {
+    tl.to(errCells, {
+      opacity:1, y:0, duration:0.65,
+      ease:'power3.out',
+      stagger: { amount: 0.4 }
+    }, 0.35);
+  }
+
+  const cycleSteps = section.querySelectorAll('.cycle-step');
+  if (cycleSteps.length) {
+    tl.to(cycleSteps, {
+      opacity:1, y:0, duration:0.7,
+      ease:'expo.out',
+      stagger: { amount: 0.35 }
+    }, 0.35);
+  }
+
+  const qr = section.querySelector('.qr-container');
+  if (qr) tl.to(qr, { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.35);
+
+  // NEW: level badges
+  const lvBadge = section.querySelector('.level-badge');
+  if (lvBadge) tl.to(lvBadge, { opacity:1, duration:0.6, ease:'power3.out' }, 0);
+
+  // NEW: technique rows
+  const tRows = section.querySelectorAll('.technique-row');
+  if (tRows.length) {
+    tl.to(tRows, { opacity:1, x:0, duration:0.7, ease:'power3.out', stagger: { amount:0.4 } }, 0.4);
+  }
+
+  // NEW: ex-blocks inside technique rows
+  const exBlocks = section.querySelectorAll('.ex-block');
+  if (exBlocks.length) {
+    tl.to(exBlocks, { opacity:1, y:0, duration:0.6, ease:'power3.out', stagger: { amount:0.25 } }, 0.55);
+  }
+
+  // NEW: xml-block
+  const xmlBlock = section.querySelector('.xml-block');
+  if (xmlBlock) tl.to(xmlBlock, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4);
+
+  // NEW: eval-loop
+  const evalLoop = section.querySelector('.eval-loop');
+  if (evalLoop) tl.to(evalLoop, { opacity:1, y:0, duration:0.8, ease:'expo.out' }, 0.4);
+
+  // NEW: prompt-ready cards
+  const prCards = section.querySelectorAll('.pr-card');
+  if (prCards.length) {
+    tl.to(prCards, { opacity:1, y:0, duration:0.65, ease:'power3.out', stagger: { amount:0.45 } }, 0.35);
+  }
+}
+
+// Wire all scenes
+const scenes = [
+  ['#s0', 1], ['#s1', 2], ['#s2', 3], ['#s3', 4],
+  ['#s4', 5], ['#s5', 6], ['#s6', 7], ['#s7', 8], ['#s8', 9],
+  ['#sa', 10], ['#sb', 11], ['#sc', 12], ['#sd', 13], ['#se', 14],
+];
+scenes.forEach(([id, pal]) => revealScene(id, pal));
+
+// Footer
+gsap.to('.footer-inner', {
+  opacity:1, duration:1.2, ease:'power3.out',
+  scrollTrigger: { trigger:'#footer', start:'top 80%' }
+});
+
+/* ══════════════════════════════════════════════════════
+   NAV DOTS
+══════════════════════════════════════════════════════ */
+const navSections = ['hero','s0','s1','s2','s3','s4','s5','s6','s7','s8','sa','sb','sc','sd','se'];
+const navDots = document.querySelectorAll('.nav-dot');
+
+navDots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    const target = document.getElementById(navSections[i]);
+    if (target) lenis.scrollTo(target, { offset: 0, duration: 1.6, easing: t => 1 - Math.pow(1-t, 4) });
+  });
+});
+
+ScrollTrigger.create({
+  trigger: 'main',
+  start: 'top top',
+  end: 'bottom bottom',
+  onUpdate: self => {
+    const prog = self.progress;
+    const idx = Math.round(prog * (navSections.length - 1));
+    navDots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+});
+
+/* ══════════════════════════════════════════════════════
+   COPY ON DOUBLE-CLICK — template-block + xml-block
+══════════════════════════════════════════════════════ */
+document.querySelectorAll('.template-block').forEach(block => {
+  block.addEventListener('dblclick', async () => {
+    const text = block.innerText
+      .replace(/^TEMPLATE.*\n?/, '')
+      .replace(/^ESEMPIO.*\n?/, '')
+      .trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      block.classList.add('copied');
+      setTimeout(() => block.classList.remove('copied'), 700);
+    } catch(e) {}
+  });
+});
+
+document.querySelectorAll('.xml-block').forEach(block => {
+  block.addEventListener('dblclick', async () => {
+    const text = block.querySelector('pre')?.innerText?.trim() || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      block.style.borderColor = 'rgba(103,232,249,0.7)';
+      setTimeout(() => block.style.borderColor = '', 700);
+    } catch(e) {}
+  });
+});
+
+/* pr-copy buttons */
+window.copyPrompt = async function(btn) {
+  const body = btn.closest('.pr-card').querySelector('.pr-body');
+  if (!body) return;
+  try {
+    await navigator.clipboard.writeText(body.innerText.trim());
+    const orig = btn.textContent;
+    btn.textContent = 'COPIATO ✓';
+    btn.style.color = '#86efac';
+    btn.style.borderColor = 'rgba(134,239,172,0.4)';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 1200);
+  } catch(e) {}
+};
+
+/* ══════════════════════════════════════════════════════
+   SCROLL HINT CLICK
+══════════════════════════════════════════════════════ */
+document.querySelector('.scroll-hint')?.addEventListener('click', () => {
+  lenis.scrollTo(document.getElementById('s0'), { duration: 1.8 });
+});
+</script>
+</body>
+</html>
