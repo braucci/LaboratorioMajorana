@@ -589,6 +589,69 @@ body {
 
 .lesson-intro-text strong { color: var(--text); font-weight: 600; }
 
+/* Pulsante dispensa lezione — call-to-action discreta in cima al body */
+.handout-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 22px;
+  margin-bottom: 24px;
+  background: linear-gradient(90deg,
+              rgba(255, 107, 53, 0.08) 0%,
+              rgba(255, 107, 53, 0.02) 100%);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  border-left: 3px solid var(--accent-2);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.25s;
+}
+
+.handout-cta:hover {
+  background: linear-gradient(90deg,
+              rgba(255, 107, 53, 0.14) 0%,
+              rgba(255, 107, 53, 0.04) 100%);
+  border-color: var(--accent-2);
+  transform: translateY(-1px);
+}
+
+.handout-cta:hover .handout-arrow {
+  transform: translateX(4px);
+}
+
+.handout-icon {
+  font-size: 22px;
+  line-height: 1;
+  filter: grayscale(0.1);
+}
+
+.handout-text {
+  flex: 1;
+}
+
+.handout-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+  margin-bottom: 2px;
+}
+
+.handout-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.handout-arrow {
+  font-family: var(--mono);
+  font-size: 20px;
+  color: var(--accent-2);
+  transition: transform 0.25s;
+}
+
 /* Griglia studenti */
 .students-grid {
   display: grid;
@@ -998,9 +1061,13 @@ footer .accent { color: var(--accent); }
 /* =========================================================
    STRUTTURA DATI
    -----------------------------------------------------------
-   Per aggiungere un link, modificare l'array `students` della
-   lezione corrispondente. Il campo `url` può essere null
+   Per aggiungere un link studente: modificare l'array `students`
+   della lezione corrispondente. Il campo `url` può essere null
    (studente in attesa) oppure una stringa con l'URL completo.
+
+   Per agganciare la dispensa di una lezione: valorizzare il
+   campo `handout` con il percorso al file HTML. Se omesso o
+   null, il pulsante "Apri la dispensa" non viene mostrato.
    ========================================================= */
 const LESSONS = [
   {
@@ -1008,6 +1075,7 @@ const LESSONS = [
     title: 'La tua prima Web App — dal codice al browser',
     date: '18 · 05 · 2026',
     status: 'live',
+    handout: 'appunti/lezione_zero.html',
     summary: `Prima lezione del modulo. Gli studenti hanno costruito un
       <strong>convertitore di unità di misura SI ↔ Imperiale</strong>
       generato con l'IA, hanno aperto il loro account GitHub e hanno
@@ -1034,6 +1102,7 @@ const LESSONS = [
     title: 'Python — variabili, tipi di dato, operatori',
     date: 'in programmazione',
     status: 'planned',
+    handout: null,
     summary: '',
     topics: [],
     duration: '',
@@ -1117,6 +1186,18 @@ function renderLessonBody(lez, liveCount, pendingCount) {
     }
   }).join('');
 
+  // Pulsante dispensa: visibile solo se la lezione ha un campo `handout` valorizzato
+  const handoutHtml = lez.handout ? `
+    <a class="handout-cta" href="${lez.handout}" target="_blank" rel="noopener">
+      <div class="handout-icon">📖</div>
+      <div class="handout-text">
+        <div class="handout-label">Dispensa della lezione</div>
+        <div class="handout-title">Apri il materiale didattico in formato interattivo</div>
+      </div>
+      <div class="handout-arrow">→</div>
+    </a>
+  ` : '';
+
   return `
     <div class="lesson-intro">
       <div class="lesson-intro-meta">
@@ -1125,6 +1206,8 @@ function renderLessonBody(lez, liveCount, pendingCount) {
       </div>
       <div class="lesson-intro-text">${lez.summary}</div>
     </div>
+
+    ${handoutHtml}
 
     <div class="students-grid">${studentsHtml}</div>
 
