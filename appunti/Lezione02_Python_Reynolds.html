@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lezione 02 · Variabili, tipi e conversioni di unità</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070d0e;
+  --bg-1:#0a1417;
+  --ink:#eef4f1;
+  --ink-dim:#9bb1ad;
+  --teal:#6df0d2;
+  --teal-deep:#0eaf95;
+  --gold:#f7c873;
+  --gold-deep:#d49a37;
+  --rose:#ff8a8a;
+  --line:rgba(109,240,210,0.18);
+  --line-2:rgba(247,200,115,0.22);
+  --grid:rgba(109,240,210,0.06);
+  --panel:rgba(7,13,14,0.7);
+  --panel-strong:rgba(5,10,11,0.88);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg-0);color:var(--ink);font-family:"Fraunces",serif;overflow-x:hidden}
+body{min-height:100vh;line-height:1.55}
+
+#bg-canvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+
+.grid-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+  -webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+}
+.vignette{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,0.7) 100%)}
+.scanline{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,0.012) 3px,rgba(255,255,255,0.012) 4px);
+  mix-blend-mode:overlay;
+}
+
+.hud{
+  position:fixed;top:0;left:0;right:0;z-index:50;padding:14px 28px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.16em;
+  color:var(--teal);background:linear-gradient(to bottom,rgba(5,10,11,0.85),transparent);
+  border-bottom:1px solid rgba(109,240,210,0.1);text-transform:uppercase;
+}
+.hud .left{display:flex;gap:24px;align-items:center}
+.hud .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);animation:pulse 2s ease-in-out infinite}
+.hud .right{display:flex;gap:24px;color:var(--ink-dim)}
+@keyframes pulse{50%{opacity:0.35}}
+
+.rail{
+  position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:40;
+  display:flex;flex-direction:column;gap:14px;
+  font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.14em;
+}
+.rail .node{display:flex;align-items:center;gap:10px;color:var(--ink-dim);transition:color 0.4s ease;cursor:pointer}
+.rail .node .mark{width:10px;height:10px;border:1px solid var(--ink-dim);transform:rotate(45deg);transition:all 0.4s ease}
+.rail .node.active{color:var(--teal)}
+.rail .node.active .mark{background:var(--teal);border-color:var(--teal);box-shadow:0 0 16px var(--teal)}
+
+section{position:relative;z-index:10;min-height:100vh;padding:120px 8vw;display:flex;flex-direction:column;justify-content:center}
+
+.hero{min-height:100vh;justify-content:center}
+.hero .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.hero h1{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(54px,9vw,140px);line-height:0.92;letter-spacing:-0.02em;margin-bottom:26px;color:var(--ink)}
+.hero h1 em{font-style:italic;font-weight:400;color:var(--teal)}
+.hero h1 .stamp{font-style:normal;font-weight:500;display:block;font-family:"Space Grotesk",sans-serif;font-size:clamp(20px,3.4vw,42px);letter-spacing:0.05em;color:var(--gold);margin-top:14px}
+.hero .sub{font-family:"Space Grotesk",sans-serif;font-size:clamp(15px,1.4vw,18px);letter-spacing:0.02em;color:var(--ink-dim);max-width:680px;line-height:1.85}
+.hero .meta{margin-top:48px;display:flex;gap:48px;flex-wrap:wrap;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.16em;color:var(--ink-dim)}
+.hero .meta b{color:var(--teal);font-weight:400;display:block;font-size:18px;margin-top:4px;letter-spacing:0.04em}
+
+.scroll-cue{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.3em;color:var(--teal);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px}
+.scroll-cue .line{width:1px;height:48px;background:linear-gradient(to bottom,var(--teal),transparent);animation:drop 2s ease-in-out infinite}
+@keyframes drop{0%,100%{transform:scaleY(0.4);transform-origin:top}50%{transform:scaleY(1)}}
+
+.section-head{margin-bottom:64px}
+.section-head .num{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+.section-head h2{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(40px,6.5vw,92px);line-height:1;letter-spacing:-0.02em;color:var(--ink);max-width:1000px}
+.section-head h2 em{font-style:italic;color:var(--teal)}
+.section-head h2 .accent{color:var(--gold);font-style:italic}
+.section-head .lead{margin-top:24px;font-family:"Space Grotesk",sans-serif;font-size:clamp(16px,1.4vw,19px);color:var(--ink-dim);max-width:760px;line-height:1.8}
+
+/* ============== PATTO ============== */
+.pact{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);margin-top:32px}
+.pact .col{padding:38px 32px;border-right:1px solid var(--line)}
+.pact .col:last-child{border-right:none;background:linear-gradient(135deg,rgba(247,200,115,0.05),rgba(255,138,138,0.04))}
+.pact .col h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:18px}
+.pact .col:last-child h3{color:var(--gold)}
+.pact .col ul{list-style:none}
+.pact .col li{padding:10px 0 10px 22px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;line-height:1.7;color:var(--ink-dim);border-bottom:1px dashed rgba(109,240,210,0.12)}
+.pact .col li:last-child{border-bottom:none}
+.pact .col li::before{content:"›";position:absolute;left:0;top:10px;color:var(--teal);font-weight:700}
+.pact .col:last-child li::before{color:var(--gold)}
+
+.golden{margin-top:56px;padding:40px 44px;background:linear-gradient(120deg,rgba(247,200,115,0.10),rgba(109,240,210,0.05));border:1px solid var(--line-2);border-left:3px solid var(--gold);position:relative}
+.golden .label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.3em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+.golden q{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(22px,3vw,38px);color:var(--ink);line-height:1.3}
+.golden q::before{content:"«";color:var(--gold);margin-right:4px}
+.golden q::after{content:"»";color:var(--gold);margin-left:4px}
+
+/* ============== PLANNER ============== */
+.planner{background:var(--panel-strong);backdrop-filter:blur(10px);border:1px solid var(--line);margin-top:24px}
+.planner .row{display:grid;grid-template-columns:80px 1.4fr 2fr;gap:24px;padding:18px 28px;border-bottom:1px solid rgba(109,240,210,0.08);align-items:center;font-family:"Space Grotesk",sans-serif;font-size:14px;transition:background 0.3s ease}
+.planner .row:hover{background:rgba(109,240,210,0.04)}
+.planner .row.head{background:rgba(109,240,210,0.06);font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:var(--teal)}
+.planner .row .nn{font-family:"JetBrains Mono",monospace;font-weight:700;color:var(--gold);font-size:15px}
+.planner .row.head .nn{color:var(--teal);font-weight:400;font-size:10px}
+.planner .row .topic{color:var(--ink);font-weight:500}
+.planner .row .app{color:var(--ink-dim);font-style:italic;font-family:"Fraunces",serif;font-size:15px}
+.planner .row.head .topic,.planner .row.head .app{font-style:normal;font-family:"JetBrains Mono",monospace;color:var(--teal);font-weight:400}
+.planner .row.current{background:linear-gradient(90deg,rgba(247,200,115,0.10),transparent);border-left:3px solid var(--gold)}
+
+/* ============== TIMELINE ============== */
+.timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:24px}
+.tl-step{padding:26px 22px;background:var(--panel-strong);border:1px solid var(--line);border-right:none;position:relative;backdrop-filter:blur(10px)}
+.tl-step:last-child{border-right:1px solid var(--line)}
+.tl-step::after{content:"→";position:absolute;right:-9px;top:30px;z-index:2;width:18px;height:18px;background:var(--bg-0);display:flex;align-items:center;justify-content:center;color:var(--teal);font-family:"JetBrains Mono",monospace;font-size:18px;text-shadow:0 0 8px var(--teal)}
+.tl-step:last-child::after{display:none}
+.tl-step .ts-num{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
+.tl-step .ts-name{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin-bottom:10px;letter-spacing:0.01em}
+.tl-step .ts-time{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--teal);margin-bottom:14px;letter-spacing:0.12em}
+.tl-step .ts-desc{font-family:"Fraunces",serif;font-size:14px;color:var(--ink-dim);font-style:italic;line-height:1.6}
+
+/* ============== PROMPTS ============== */
+.prompts{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.prompt-card{padding:32px 28px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);position:relative}
+.prompt-card.bad{border-color:rgba(255,138,138,0.4);background:linear-gradient(135deg,rgba(255,138,138,0.08),var(--panel-strong) 60%)}
+.prompt-card.good{border-color:rgba(109,240,210,0.4);background:linear-gradient(135deg,rgba(109,240,210,0.08),var(--panel-strong) 60%)}
+.prompt-card .ptag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;margin-bottom:12px}
+.prompt-card.bad .ptag{color:var(--rose)}
+.prompt-card.good .ptag{color:var(--teal)}
+.prompt-card .pname{font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:22px;color:var(--ink);margin-bottom:18px}
+.prompt-card q{display:block;font-family:"Fraunces",serif;font-style:italic;font-size:17px;line-height:1.7;color:var(--ink);padding:18px 22px;background:rgba(0,0,0,0.3);border-left:2px solid currentColor}
+.prompt-card.bad q{color:var(--rose)}
+.prompt-card.good q{color:var(--teal)}
+.prompt-card q strong{font-weight:700;font-style:normal}
+
+.cycle{margin-top:64px;display:grid;grid-template-columns:repeat(6,1fr);gap:0}
+.cy-step{padding:22px 18px;text-align:center;background:var(--panel-strong);border:1px solid var(--line);border-right:none;position:relative}
+.cy-step:last-child{border-right:1px solid var(--line)}
+.cy-step .cy-n{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--gold);margin-bottom:10px;letter-spacing:0.12em}
+.cy-step .cy-l{font-family:"Space Grotesk",sans-serif;font-weight:500;font-size:13px;color:var(--ink);letter-spacing:0.02em}
+.cy-step.critical{background:linear-gradient(135deg,rgba(247,200,115,0.12),var(--panel-strong));border-color:var(--line-2)}
+.cy-step.critical .cy-l{color:var(--gold)}
+.cy-step::after{content:"→";position:absolute;right:-7px;top:50%;transform:translateY(-50%);z-index:2;width:14px;height:14px;background:var(--bg-0);display:flex;align-items:center;justify-content:center;color:var(--teal);font-family:"JetBrains Mono",monospace;font-size:14px}
+.cy-step:last-child::after{display:none}
+
+/* ============== CODE ============== */
+.code-stage{margin-top:24px;background:rgba(2,6,7,0.94);border:1px solid var(--line);position:relative;backdrop-filter:blur(8px);box-shadow:0 0 60px rgba(0,0,0,0.4),inset 0 0 0 1px rgba(109,240,210,0.06)}
+.code-stage::before,.code-stage::after{content:"";position:absolute;width:18px;height:18px;border-color:var(--teal);border-style:solid}
+.code-stage::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.code-stage::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+.code-head{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.18em;color:var(--teal);text-transform:uppercase}
+.code-head .dots{display:flex;gap:8px}
+.code-head .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.12)}
+.code-head .dots span:nth-child(1){background:#ff5454}
+.code-head .dots span:nth-child(2){background:var(--gold)}
+.code-head .dots span:nth-child(3){background:var(--teal)}
+.code-body{padding:28px 32px;font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.75;color:#d6e6e4;overflow-x:auto;white-space:pre}
+.code-body .ln{display:inline-block;width:30px;text-align:right;color:rgba(155,177,173,0.35);margin-right:18px;user-select:none}
+.code-body .kw{color:#ff8ad0;font-weight:500}
+.code-body .bi{color:#94d8ff}
+.code-body .st{color:#f7c873}
+.code-body .nm{color:#9fffe5}
+.code-body .cm{color:#7a8e8a;font-style:italic}
+.code-body .fn{color:#6df0d2}
+.code-body .op{color:#cfb0ff}
+
+.code-notes{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-top:none;background:rgba(7,13,14,0.85)}
+.code-notes .cn{padding:20px 22px;border-right:1px solid var(--line)}
+.code-notes .cn:last-child{border-right:none}
+.code-notes .cn .cn-tag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.code-notes .cn .cn-title{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:14px;color:var(--ink);margin-bottom:8px}
+.code-notes .cn .cn-text{font-family:"Fraunces",serif;font-style:italic;font-size:13.5px;color:var(--ink-dim);line-height:1.6}
+
+/* ============== ISA ============== */
+.isa-box{margin-top:24px;display:grid;grid-template-columns:1.1fr 1fr;gap:24px}
+.isa-formulas{padding:38px 36px;background:var(--panel-strong);border:1px solid var(--line);border-left:2px solid var(--teal);backdrop-filter:blur(10px);position:relative}
+.isa-formulas::before{content:"ISA · ICAO 1964";position:absolute;top:14px;right:18px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.22em;color:var(--teal);opacity:0.55;text-transform:uppercase}
+.isa-formulas h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.isa-formulas .desc{font-family:"Fraunces",serif;font-style:italic;color:var(--ink-dim);font-size:15px;margin-bottom:18px;line-height:1.6}
+.isa-formula{padding:18px;background:rgba(0,0,0,0.4);border:1px solid rgba(109,240,210,0.28);border-radius:2px;margin-bottom:14px}
+.isa-formula .katex-display{margin:0}
+.isa-formula .katex{font-size:1.3em !important;color:#fff !important;text-shadow:0 0 10px rgba(109,240,210,0.3)}
+.isa-formula .katex *{color:#fff !important}
+.isa-formula .katex .frac-line{border-bottom-color:var(--teal) !important;border-bottom-width:0.06em !important}
+.isa-formula .katex .mord.mathnormal,.isa-formula .katex .mathit{color:var(--gold) !important}
+.isa-formula .katex .mrel,.isa-formula .katex .mbin{color:var(--teal) !important}
+
+.isa-const{padding:38px 36px;background:var(--panel-strong);border:1px solid var(--line);border-left:2px solid var(--gold);backdrop-filter:blur(10px)}
+.isa-const h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.isa-const dl{display:grid;grid-template-columns:auto 1fr;gap:14px 18px}
+.isa-const dt{font-family:"Fraunces",serif;font-style:italic;color:var(--teal);font-size:17px}
+.isa-const dd{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--ink);letter-spacing:0.02em}
+
+/* ============== VALIDATION ============== */
+.val-table{margin-top:24px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);overflow:hidden}
+.val-table table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace}
+.val-table th{padding:16px 20px;font-size:10px;letter-spacing:0.22em;color:var(--teal);text-transform:uppercase;font-weight:400;text-align:right;border-bottom:1px solid var(--line);background:rgba(109,240,210,0.04)}
+.val-table th:first-child{text-align:left}
+.val-table td{padding:14px 20px;font-size:14px;color:var(--ink);text-align:right;border-bottom:1px solid rgba(109,240,210,0.08)}
+.val-table td:first-child{text-align:left;color:var(--gold);font-weight:700}
+.val-table tr:last-child td{border-bottom:none}
+.val-table tr.highlight td{background:rgba(247,200,115,0.06)}
+
+.val-test{margin-top:32px;padding:32px 36px;background:linear-gradient(120deg,rgba(109,240,210,0.06),rgba(247,200,115,0.04));border:1px solid var(--line);border-left:3px solid var(--teal)}
+.val-test h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:16px}
+.val-test ol{padding-left:0;list-style:none;counter-reset:tcount}
+.val-test li{counter-increment:tcount;padding:10px 0 10px 38px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--ink);line-height:1.7}
+.val-test li::before{content:counter(tcount,decimal-leading-zero);position:absolute;left:0;top:11px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--gold);letter-spacing:0.08em}
+
+/* ============== EXERCISES ============== */
+.exercises{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:24px}
+.ex-card{padding:32px 28px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);position:relative}
+.ex-card .ex-n{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
+.ex-card .ex-t{font-family:"Fraunces",serif;font-weight:500;font-size:22px;color:var(--ink);margin-bottom:14px;line-height:1.2}
+.ex-card .ex-d{font-family:"Space Grotesk",sans-serif;font-size:14px;color:var(--ink-dim);line-height:1.7}
+.ex-card .ex-d code{font-family:"JetBrains Mono",monospace;font-size:12px;background:rgba(109,240,210,0.1);color:var(--teal);padding:1px 6px;border-radius:2px}
+
+/* ============== PYTHON → WEB ============== */
+.bridge{
+  margin-top:24px;
+  display:grid;grid-template-columns:1fr auto 1fr;gap:24px;
+  align-items:stretch;
+}
+.bridge-side{
+  padding:28px 26px;
+  background:var(--panel-strong);
+  border:1px solid var(--line);
+  backdrop-filter:blur(10px);
+  text-align:center;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.bridge-side .bs-stack{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.22em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:14px;
+}
+.bridge-side .bs-name{
+  font-family:"Fraunces",serif;font-weight:500;font-style:italic;
+  font-size:26px;color:var(--ink);margin-bottom:10px;
+}
+.bridge-side .bs-desc{
+  font-family:"Space Grotesk",sans-serif;font-size:14px;
+  color:var(--ink-dim);line-height:1.6;
+}
+.bridge-side.py{border-left:2px solid var(--teal)}
+.bridge-side.web{border-left:2px solid var(--gold)}
+
+.bridge-arrow{
+  display:flex;align-items:center;justify-content:center;
+  font-family:"JetBrains Mono",monospace;
+  font-size:32px;color:var(--teal);
+  text-shadow:0 0 16px rgba(109,240,210,0.4);
+  padding:0 8px;
+}
+.bridge-arrow .label{
+  display:block;font-size:9px;letter-spacing:0.22em;
+  color:var(--gold);text-transform:uppercase;margin-top:6px;
+  text-shadow:none;
+}
+
+.translate-prompt{
+  margin-top:32px;
+  padding:36px 38px;
+  background:linear-gradient(135deg,rgba(109,240,210,0.08),var(--panel-strong) 60%);
+  border:1px solid rgba(109,240,210,0.4);
+  position:relative;
+}
+.translate-prompt .ptag{
+  font-family:"JetBrains Mono",monospace;
+  font-size:10px;letter-spacing:0.28em;color:var(--teal);
+  text-transform:uppercase;margin-bottom:14px;
+}
+.translate-prompt .pname{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;
+  font-size:22px;color:var(--ink);margin-bottom:20px;
+}
+.translate-prompt q{
+  display:block;
+  font-family:"Fraunces",serif;font-style:italic;
+  font-size:17px;line-height:1.75;color:var(--ink);
+  padding:22px 26px;
+  background:rgba(0,0,0,0.42);
+  border-left:3px solid var(--teal);
+}
+.translate-prompt q strong{font-weight:700;font-style:normal;color:var(--gold)}
+.translate-prompt q em{color:var(--teal);font-style:italic}
+
+.gh-steps{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+  margin-top:24px;
+}
+.gh-step{
+  padding:26px 22px;
+  background:var(--panel-strong);
+  border:1px solid var(--line);
+  border-right:none;
+  position:relative;
+  backdrop-filter:blur(10px);
+}
+.gh-step:last-child{border-right:1px solid var(--line)}
+.gh-step::after{
+  content:"→";position:absolute;right:-9px;top:30px;z-index:2;
+  width:18px;height:18px;background:var(--bg-0);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-family:"JetBrains Mono",monospace;
+  font-size:18px;text-shadow:0 0 8px var(--gold);
+}
+.gh-step:last-child::after{display:none}
+.gh-step .gs-n{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.22em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.gh-step .gs-t{
+  font-family:"Space Grotesk",sans-serif;font-weight:700;
+  font-size:16px;color:var(--ink);margin-bottom:10px;
+}
+.gh-step .gs-d{
+  font-family:"Fraunces",serif;font-style:italic;
+  font-size:14px;color:var(--ink-dim);line-height:1.6;
+}
+.gh-step .gs-d code{
+  font-family:"JetBrains Mono",monospace;font-size:12px;
+  background:rgba(109,240,210,0.1);color:var(--teal);
+  padding:1px 6px;border-radius:2px;font-style:normal;
+}
+
+.demo-wrap{
+  margin-top:32px;
+  background:var(--panel-strong);
+  border:1px solid var(--line);
+  backdrop-filter:blur(10px);
+  overflow:hidden;
+}
+.demo-head{
+  padding:14px 22px;
+  border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.18em;
+  color:var(--teal);text-transform:uppercase;
+  background:rgba(109,240,210,0.04);
+}
+.demo-head .url{
+  color:var(--ink-dim);font-size:10px;
+  background:rgba(0,0,0,0.35);
+  padding:4px 10px;border-radius:2px;
+}
+.demo-head .url span{color:var(--gold)}
+.demo-iframe{
+  width:100%;
+  height:740px;
+  border:none;
+  background:#0a1417;
+  display:block;
+}
+
+.callout{
+  margin-top:32px;
+  padding:28px 32px;
+  background:linear-gradient(120deg,rgba(247,200,115,0.10),rgba(109,240,210,0.04));
+  border:1px solid var(--line-2);
+  border-left:3px solid var(--gold);
+}
+.callout .cl-label{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.28em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.callout .cl-text{
+  font-family:"Fraunces",serif;font-size:17px;
+  color:var(--ink);line-height:1.7;font-style:italic;
+}
+.callout .cl-text strong{color:var(--teal);font-style:normal;font-weight:700}
+
+/* ============== CLOSING ============== */
+.closing{padding:160px 8vw}
+.closing h2{font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:clamp(48px,7vw,108px);line-height:1.05;margin-bottom:32px;letter-spacing:-0.02em}
+.closing h2 em{font-style:italic;color:var(--teal)}
+.closing h2 .glow{color:var(--gold);text-shadow:0 0 30px rgba(247,200,115,0.4)}
+.closing .next{margin-top:48px;padding:36px 40px;background:var(--panel-strong);border:1px solid var(--line);border-left:3px solid var(--teal)}
+.closing .next h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:18px}
+.closing .next ul{list-style:none}
+.closing .next li{padding:10px 0 10px 22px;position:relative;font-family:"Fraunces",serif;font-size:18px;color:var(--ink);line-height:1.6;border-bottom:1px dashed rgba(109,240,210,0.12)}
+.closing .next li:last-child{border-bottom:none}
+.closing .next li::before{content:"→";position:absolute;left:0;color:var(--gold)}
+.closing .next li code{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px}
+
+.motto{margin-top:80px;text-align:center;font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:clamp(28px,4vw,56px);line-height:1.3;color:var(--ink);letter-spacing:-0.01em}
+.motto .a{color:var(--teal)}
+.motto .b{color:var(--gold)}
+
+.signature{margin-top:96px;padding-top:32px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.18em;color:var(--ink-dim);text-transform:uppercase}
+.signature .right{color:var(--gold)}
+
+@media (max-width:1100px){
+  .pact,.prompts,.isa-box{grid-template-columns:1fr}
+  .pact .col{border-right:none;border-bottom:1px solid var(--line)}
+  .pact .col:last-child{border-bottom:none}
+  .timeline,.cycle{grid-template-columns:1fr 1fr}
+  .tl-step,.cy-step{border-right:1px solid var(--line);border-bottom:none}
+  .tl-step::after,.cy-step::after{display:none}
+  .exercises{grid-template-columns:1fr}
+  .bridge{grid-template-columns:1fr}
+  .bridge-arrow{transform:rotate(90deg);padding:8px 0}
+  .gh-steps{grid-template-columns:1fr 1fr}
+  .gh-step{border-right:1px solid var(--line)}
+  .gh-step::after{display:none}
+}
+@media (max-width:700px){
+  .timeline,.cycle{grid-template-columns:1fr}
+  .planner .row{grid-template-columns:60px 1fr;gap:14px}
+  .planner .row .app{grid-column:2}
+  .planner .row.head{display:none}
+  .code-notes{grid-template-columns:1fr}
+  .code-notes .cn{border-right:none;border-bottom:1px solid var(--line)}
+  .code-notes .cn:last-child{border-bottom:none}
+  section{padding:80px 6vw}
+  .rail{display:none}
+  .hud{font-size:9px;padding:10px 16px}
+  .hud .right{display:none}
+  .isa-formula .katex{font-size:1.05em !important}
+  .gh-steps{grid-template-columns:1fr}
+  .demo-iframe{height:600px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+<div class="vignette"></div>
+<div class="scanline"></div>
+
+<div class="hud">
+  <div class="left">
+    <span class="dot"></span>
+    <span>SYS · PYTHON FOR AERO · L02</span>
+    <span style="color:var(--ink-dim)">Variabili, tipi, unità di misura</span>
+  </div>
+  <div class="right">
+    <span id="hud-section">SEC · 00 · INTRO</span>
+    <span id="hud-progress">PRG · 0%</span>
+  </div>
+</div>
+
+<nav class="rail" id="rail">
+  <div class="node" data-target="hero"><span class="mark"></span><span>00 · INCIPIT</span></div>
+  <div class="node" data-target="recap"><span class="mark"></span><span>01 · RECAP</span></div>
+  <div class="node" data-target="mars"><span class="mark"></span><span>02 · MARS ORBITER</span></div>
+  <div class="node" data-target="binding"><span class="mark"></span><span>03 · BINDING</span></div>
+  <div class="node" data-target="naming"><span class="mark"></span><span>04 · NOMI</span></div>
+  <div class="node" data-target="types"><span class="mark"></span><span>05 · TIPI</span></div>
+  <div class="node" data-target="floats"><span class="mark"></span><span>06 · FLOAT</span></div>
+  <div class="node" data-target="ops"><span class="mark"></span><span>07 · OPERATORI</span></div>
+  <div class="node" data-target="convert"><span class="mark"></span><span>08 · CONVERSIONI</span></div>
+  <div class="node" data-target="script"><span class="mark"></span><span>09 · LO SCRIPT</span></div>
+  <div class="node" data-target="dimensional"><span class="mark"></span><span>10 · DIMENSIONI</span></div>
+  <div class="node" data-target="web"><span class="mark"></span><span>11 · REYNOLDS WEB</span></div>
+  <div class="node" data-target="closing"><span class="mark"></span><span>12 · OLTRE</span></div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="eyebrow">Lezione 02 · Variabili, tipi e conversioni di unità</div>
+  <h1>
+    Le unità di misura:<br>
+    dove si <em>decide</em> se<br>
+    il calcolo ha <em>senso</em>.
+    <span class="stamp">FT · KT · HPA · °C · K · NM</span>
+  </h1>
+  <p class="sub">
+    Una variabile è un nome con un'unità che le sta accanto. Sbagliare quella unità è il modo più costoso di sbagliare un calcolo — la NASA ne sa qualcosa. Oggi impariamo a far dialogare piedi, nodi, hectopascal e gradi Celsius senza perdere una sonda lungo la strada.
+  </p>
+  <div class="meta">
+    <div>OBIETTIVO<br><b>Convertitore di unità aeronautiche</b></div>
+    <div>NUOVI CONCETTI<br><b>int · float · bool · str · type cast</b></div>
+    <div>REGOLA D'ORO<br><b>Il nome è documentazione</b></div>
+  </div>
+  <div class="scroll-cue">
+    <div class="line"></div>
+    SCROLL · DAL BUG ALLA REGOLA
+  </div>
+</section>
+
+<!-- RECAP -->
+<section id="recap">
+  <div class="section-head">
+    <div class="num">§ 01 · Dove eravamo rimasti</div>
+    <h2>Lo script <em>ISA</em><br>era in SI puro.<br><span class="accent">Il mondo reale</span> no.</h2>
+    <p class="lead">
+      Nella Lezione 01 abbiamo lavorato in metri, kelvin, pascal, chilogrammi al metro cubo. Pulito, didattico, coerente. Ma il primo bollettino METAR che leggerete è in nodi, hectopascal e gradi Celsius. La cabina di un Boeing parla in piedi e in libbre. Oggi colmiamo questa frattura.
+    </p>
+  </div>
+
+  <div class="pact">
+    <div class="col">
+      <h3>Lezione 01 · punti fermi</h3>
+      <ul>
+        <li>Sappiamo eseguire uno script Python (Thonny, terminale, VS Code).</li>
+        <li>Sappiamo formulare un buon prompt per l'IA (cosa, dati, ipotesi, forma).</li>
+        <li>Abbiamo scritto e validato l'Atmosfera Tipo ISA contro la tabella ICAO.</li>
+        <li>Abbiamo pubblicato il calcolatore HTML su GitHub Pages.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Il problema che restava aperto</h3>
+      <ul>
+        <li>I dati operativi reali arrivano in unità eterogenee.</li>
+        <li>Quote in piedi (FL), velocità in nodi, pressioni in hPa o inHg.</li>
+        <li>Temperature in °C nei bollettini, in K nelle formule fisiche.</li>
+        <li>Serve un ponte costruito con cura — non a occhio.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- MARS ORBITER -->
+<section id="mars">
+  <div class="section-head">
+    <div class="num">§ 02 · Perché questa lezione è cruciale</div>
+    <h2>23 settembre 1999:<br><em>Mars Climate Orbiter</em>,<br><span class="accent">327 milioni</span> di dollari.</h2>
+    <p class="lead">
+      La sonda della NASA si disintegra nell'atmosfera marziana al momento dell'inserimento in orbita. La causa non è un errore di formula, non è un bug di propulsione, non è una falla aerodinamica: il software di terra forniva la spinta in <em>libbre-forza·secondo</em> (imperiale), mentre il software di bordo la attendeva in <em>newton·secondo</em> (SI). Fattore di scarto: 4,45.
+    </p>
+  </div>
+
+  <div class="golden">
+    <div class="label">Morale tecnica</div>
+    <q>La maggior parte degli errori nei calcoli ingegneristici non è un errore di formula: è un errore di unità. Un programma scritto con cura sulle unità di misura vale più di un programma elegante.</q>
+  </div>
+</section>
+
+<!-- BINDING -->
+<section id="binding">
+  <div class="section-head">
+    <div class="num">§ 03 · Variabili come nomi (non come scatole)</div>
+    <h2>Il modello <em>Python</em>:<br>una variabile è un<br><span class="accent">nome legato</span> a un oggetto.</h2>
+    <p class="lead">
+      In C++ una variabile è una cella di memoria con un tipo dichiarato a priori. In Python è solo un'etichetta che si può attaccare a qualunque oggetto — anche di tipo diverso da quello precedente. Una libertà che si paga con la disciplina di chi scrive.
+    </p>
+  </div>
+
+  <div class="code-stage">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>repl · python 3.x</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="op">&gt;&gt;&gt;</span> h <span class="op">=</span> <span class="nm">5000</span>             <span class="cm"># h è un nome per l'oggetto 5000 (int)</span>
+<span class="ln">2</span><span class="op">&gt;&gt;&gt;</span> h <span class="op">=</span> <span class="nm">5000.0</span>           <span class="cm"># ora h è un nome per 5000.0 (float)</span>
+<span class="ln">3</span><span class="op">&gt;&gt;&gt;</span> h <span class="op">=</span> <span class="st">"cinquemila"</span>     <span class="cm"># ora h è un nome per una stringa</span>
+<span class="ln">4</span><span class="op">&gt;&gt;&gt;</span> <span class="bi">print</span>(<span class="bi">type</span>(h))
+<span class="ln">5</span>&lt;<span class="kw">class</span> <span class="st">'str'</span>&gt;</div>
+  </div>
+
+  <div class="code-notes">
+    <div class="cn">
+      <div class="cn-tag">Differenza chiave</div>
+      <div class="cn-title">In C++ il tipo è del nome</div>
+      <div class="cn-text"><code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">int h = 5000;</code> · il compilatore si arrabbia se proviamo a metterci una stringa.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">In Python</div>
+      <div class="cn-title">Il tipo è dell'oggetto</div>
+      <div class="cn-text">Il nome è solo un'etichetta. Lo stesso identificatore può <em>migrare</em> tra tipi diversi nella stessa sessione.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">Vantaggio</div>
+      <div class="cn-title">Prototipazione veloce</div>
+      <div class="cn-text">Nessuna dichiarazione preventiva. Si scrive solo l'essenziale, l'interprete deduce il tipo.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">Pericolo</div>
+      <div class="cn-title">Servono <em>disciplina</em> e commenti</div>
+      <div class="cn-text">Nessuno ti ricorderà che <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">h</code> doveva essere in metri. Devi farlo tu, nel nome o nel commento.</div>
+    </div>
+  </div>
+</section>
+
+<!-- NAMING -->
+<section id="naming">
+  <div class="section-head">
+    <div class="num">§ 04 · Regole di buona scrittura dei nomi</div>
+    <h2>Il nome di una variabile<br>è <em>parte</em> della sua<br><span class="accent">documentazione</span>.</h2>
+    <p class="lead">
+      Convenzioni PEP 8 + raccomandazioni aeronautiche: snake_case, unità nel nome quando ce ne sono più di una possibile, costanti in MAIUSCOLO, mai cominciare con cifra. Costa poco, salva sonde.
+    </p>
+  </div>
+
+  <div class="prompts">
+    <div class="prompt-card bad">
+      <div class="ptag">✗ Cattivo</div>
+      <div class="pname">Anonimo, ambiguo, irriproducibile</div>
+      <q><strong>v</strong> = 250<br><strong>x</strong> = 0.3048<br><strong>T</strong> = 288.15<br><br><span style="font-style:normal;color:var(--rose);font-size:14px">Cos'è v? Nodi, m/s, km/h? Cos'è x? Un fattore di conversione, una coordinata? T in K o °C?</span></q>
+    </div>
+    <div class="prompt-card good">
+      <div class="ptag">✓ Buono</div>
+      <div class="pname">Snake case · unità · costanti maiuscole</div>
+      <q><strong>quota_ft</strong> = 35000   # ft<br><strong>vel_TAS_kt</strong> = 250 # kt<br><strong>temp_SL_K</strong> = 288.15  # K<br><strong>FT_TO_M</strong> = 0.3048    # costante</q>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:48px">
+    <div class="cl-label">Quattro regole, sempre</div>
+    <div class="cl-text">
+      <strong>1.</strong> snake_case per le variabili, MAIUSCOLO per le costanti. &nbsp;
+      <strong>2.</strong> Suffisso con l'unità quando il dubbio è possibile (<em>_kt</em>, <em>_ft</em>, <em>_Pa</em>, <em>_K</em>). &nbsp;
+      <strong>3.</strong> Niente caratteri speciali, niente spazi, mai cominciare con cifra. &nbsp;
+      <strong>4.</strong> Il nome più lungo ma chiaro batte sempre quello corto e ambiguo.
+    </div>
+  </div>
+</section>
+
+<!-- TYPES -->
+<section id="types">
+  <div class="section-head">
+    <div class="num">§ 05 · I tipi numerici di Python</div>
+    <h2>Tre tipi nativi:<br><em>int</em>, <em>float</em>, <em>complex</em>.<br><span class="accent">E poi i booleani</span>.</h2>
+    <p class="lead">
+      Il <em>punto decimale</em> è il discrimine sintattico. Senza, è un intero; con, un float a doppia precisione IEEE 754 (15–16 cifre significative). I complessi servono per dinamica e stabilità.
+    </p>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-step">
+      <div class="ts-num">Tipo · 01</div>
+      <div class="ts-name">int</div>
+      <div class="ts-time">precisione arbitraria</div>
+      <div class="ts-desc">Interi senza limite di taglia. Esempio: numero di passeggeri <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">n_pax = 78</code>.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Tipo · 02</div>
+      <div class="ts-name">float</div>
+      <div class="ts-time">IEEE 754 · 64 bit</div>
+      <div class="ts-desc">Numeri in virgola mobile a doppia precisione. Massa, velocità, densità, temperatura.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Tipo · 03</div>
+      <div class="ts-name">complex</div>
+      <div class="ts-time">a + bj</div>
+      <div class="ts-desc">Numeri complessi nativi. Pulsazioni smorzate, autovalori di stabilità, FFT.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Tipo · 04</div>
+      <div class="ts-name">bool</div>
+      <div class="ts-time">True · False</div>
+      <div class="ts-desc">Risultato di confronti e operatori logici. <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">Mach &lt; 1.0</code> ritorna un bool.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Tipo · 05</div>
+      <div class="ts-name">str</div>
+      <div class="ts-time">testo Unicode</div>
+      <div class="ts-desc">Per messaggi, etichette, identificatori di velivoli. <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">"I-AERO"</code>.</div>
+    </div>
+  </div>
+
+  <div class="code-stage" style="margin-top:48px">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>repl · esempi aeronautici</div>
+    </div>
+<div class="code-body"><span class="ln">1</span>massa_kg     <span class="op">=</span> <span class="nm">7500.0</span>          <span class="cm"># float · massa al decollo</span>
+<span class="ln">2</span>n_pax        <span class="op">=</span> <span class="nm">78</span>              <span class="cm"># int   · numero di passeggeri</span>
+<span class="ln">3</span>autovalore   <span class="op">=</span> <span class="op">-</span><span class="nm">0.3</span> <span class="op">+</span> <span class="nm">2.4j</span>      <span class="cm"># complex · stabilità lat.-direz.</span>
+<span class="ln">4</span>e_supersonic <span class="op">=</span> mach <span class="op">&gt;=</span> <span class="nm">1.2</span>     <span class="cm"># bool  · flag di regime di volo</span>
+<span class="ln">5</span>callsign     <span class="op">=</span> <span class="st">"I-AERO"</span>        <span class="cm"># str   · identificativo velivolo</span></div>
+  </div>
+</section>
+
+<!-- FLOATS · IEEE 754 -->
+<section id="floats">
+  <div class="section-head">
+    <div class="num">§ 06 · L'insidia dei float</div>
+    <h2><em>0.1 + 0.2</em> non fa<br>esattamente <em>0.3</em>.<br><span class="accent">E va bene così</span>.</h2>
+    <p class="lead">
+      0,1 in base binaria è un numero periodico, esattamente come 1/3 in base decimale. La macchina non può rappresentarlo esattamente: l'errore è dell'ordine di 10⁻¹⁶ (epsilon-macchina). Conseguenza: mai confrontare due float con <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">==</code>.
+    </p>
+  </div>
+
+  <div class="code-stage">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>repl · IEEE 754</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="op">&gt;&gt;&gt;</span> <span class="nm">0.1</span> <span class="op">+</span> <span class="nm">0.2</span>
+<span class="ln">2</span><span class="nm">0.30000000000000004</span>
+<span class="ln">3</span><span class="op">&gt;&gt;&gt;</span> <span class="nm">0.1</span> <span class="op">+</span> <span class="nm">0.2</span> <span class="op">==</span> <span class="nm">0.3</span>
+<span class="ln">4</span><span class="kw">False</span>
+<span class="ln">5</span>
+<span class="ln">6</span><span class="cm"># --- La soluzione giusta -------------------------------------</span>
+<span class="ln">7</span><span class="kw">import</span> math
+<span class="ln">8</span>math.<span class="fn">isclose</span>(<span class="nm">0.1</span> <span class="op">+</span> <span class="nm">0.2</span>, <span class="nm">0.3</span>, rel_tol<span class="op">=</span><span class="nm">1e-9</span>)   <span class="cm"># True ✓</span>
+<span class="ln">9</span>
+<span class="ln">10</span><span class="cm"># --- Oppure, in modo manuale ---------------------------------</span>
+<span class="ln">11</span><span class="bi">abs</span>(a <span class="op">-</span> b) <span class="op">&lt;</span> <span class="nm">1e-9</span></div>
+  </div>
+
+  <div class="callout" style="margin-top:32px">
+    <div class="cl-label">Una regola operativa</div>
+    <div class="cl-text">
+      Per i confronti tra float, usa <strong>math.isclose()</strong> oppure verifica che il valore assoluto della differenza sia minore di una tolleranza. È una buona pratica anche quando "sembra che funzioni": prima o poi un calcolo iterato vi farà incontrare 0.30000000000000004 in produzione.
+    </div>
+  </div>
+</section>
+
+<!-- OPERATORI -->
+<section id="ops">
+  <div class="section-head">
+    <div class="num">§ 07 · Operatori aritmetici e precedenza</div>
+    <h2>Sette operatori,<br>tre livelli di <em>priorità</em>:<br><span class="accent">le parentesi salvano</span>.</h2>
+    <p class="lead">
+      Conoscere la tavola della precedenza è importante; usare comunque le parentesi quando il dubbio è possibile è più importante. <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">-2**2</code> fa −4, non +4 — perché l'esponenziazione vince sul meno unario.
+    </p>
+  </div>
+
+  <div class="val-table" style="margin-top:24px">
+    <table>
+      <thead>
+        <tr><th>Op.</th><th>Significato</th><th>Esempio</th><th>Risultato</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>+ −</td><td>somma, differenza</td><td>288.15 − 273.15</td><td>15.0</td></tr>
+        <tr><td>* /</td><td>prodotto, divisione reale</td><td>7 / 2</td><td>3.5</td></tr>
+        <tr><td>//</td><td>divisione intera (floor)</td><td>7 // 2</td><td>3</td></tr>
+        <tr><td>%</td><td>resto (modulo)</td><td>7 % 2</td><td>1</td></tr>
+        <tr class="highlight"><td>**</td><td>elevamento a potenza</td><td>1.4 ** 0.5</td><td>1.1832…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="isa-box" style="margin-top:32px">
+    <div class="isa-formulas">
+      <h4>Esempio · pressione dinamica</h4>
+      <p class="desc">Una formula da imparare a memoria: lega densità, velocità e pressione che il flusso esercita sulle superfici.</p>
+      <div class="isa-formula" data-formula="q = \tfrac{1}{2}\,\rho\,V^2 \quad [\text{Pa}]"></div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);margin-top:14px;line-height:1.7">
+        rho <span style="color:var(--ink)">=</span> 1.225        <span style="color:#7a8e8a"># kg/m³</span><br>
+        V&nbsp;&nbsp; <span style="color:var(--ink)">=</span> 100.0        <span style="color:#7a8e8a"># m/s</span><br>
+        q&nbsp;&nbsp; <span style="color:var(--ink)">=</span> <span style="color:#cfb0ff">0.5</span> <span style="color:var(--ink)">*</span> rho <span style="color:var(--ink)">*</span> V<span style="color:var(--ink)">**</span>2<br>
+        <span style="color:#7a8e8a"># q = 6125.0 Pa ≈ 61 hPa</span>
+      </p>
+    </div>
+    <div class="isa-const">
+      <h4>Verifica dimensionale</h4>
+      <p style="font-family:'Fraunces',serif;font-style:italic;color:var(--ink-dim);font-size:15px;margin-bottom:18px;line-height:1.6">La verifica delle unità è lo strumento più potente per accorgersi se il codice (vostro o dell'IA) ha un errore. Si fa <em>sempre</em>.</p>
+      <dl>
+        <dt>[ρ]</dt><dd>kg/m³</dd>
+        <dt>[V²]</dt><dd>m²/s²</dd>
+        <dt>[ρV²]</dt><dd>kg/(m·s²) = N/m² = Pa &nbsp;✓</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:32px">
+    <div class="cl-label">⚠ Insidia tipica</div>
+    <div class="cl-text">
+      <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">-2**2</code> in Python vale <strong>−4</strong>, non +4: l'operatore <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">**</code> ha priorità maggiore del meno unario. Per ottenere +4 si scrive <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">(-2)**2</code>. Le parentesi non costano nulla e tolgono ogni ambiguità.
+    </div>
+  </div>
+</section>
+
+<!-- CONVERSIONI DI TIPO -->
+<section id="convert">
+  <div class="section-head">
+    <div class="num">§ 08 · Conversioni di tipo e input</div>
+    <h2><em>input()</em> restituisce<br>sempre una <em>stringa</em>.<br><span class="accent">Sempre</span>.</h2>
+    <p class="lead">
+      Tre funzioni essenziali: <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">int()</code> tronca verso zero (non arrotonda), <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">float()</code> converte a virgola mobile, <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">str()</code> trasforma in stringa per la stampa. E Python vuole il punto decimale, non la virgola.
+    </p>
+  </div>
+
+  <div class="code-stage">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>repl · conversioni</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="op">&gt;&gt;&gt;</span> <span class="bi">int</span>(<span class="nm">3.7</span>)              <span class="cm"># tronca, non arrotonda</span>
+<span class="ln">2</span><span class="nm">3</span>
+<span class="ln">3</span><span class="op">&gt;&gt;&gt;</span> <span class="bi">int</span>(<span class="op">-</span><span class="nm">3.7</span>)
+<span class="ln">4</span><span class="op">-</span><span class="nm">3</span>
+<span class="ln">5</span><span class="op">&gt;&gt;&gt;</span> <span class="bi">float</span>(<span class="st">"1.225"</span>)         <span class="cm"># da stringa a float ✓</span>
+<span class="ln">6</span><span class="nm">1.225</span>
+<span class="ln">7</span><span class="op">&gt;&gt;&gt;</span> <span class="bi">float</span>(<span class="st">"1,225"</span>)         <span class="cm"># virgola italiana: ERRORE</span>
+<span class="ln">8</span><span class="kw">ValueError</span>: could not convert string to float: <span class="st">'1,225'</span>
+<span class="ln">9</span>
+<span class="ln">10</span><span class="cm"># --- Errore frequente con input() ----------------------------</span>
+<span class="ln">11</span><span class="op">&gt;&gt;&gt;</span> q <span class="op">=</span> <span class="bi">input</span>(<span class="st">"V [m/s]: "</span>) <span class="op">+</span> <span class="nm">10</span>
+<span class="ln">12</span><span class="kw">TypeError</span>: can only concatenate str (not <span class="st">"int"</span>) to str
+<span class="ln">13</span>
+<span class="ln">14</span><span class="cm"># --- Soluzione: convertire esplicitamente --------------------</span>
+<span class="ln">15</span>q <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"V [m/s]: "</span>)) <span class="op">+</span> <span class="nm">10</span>    <span class="cm"># ora va bene ✓</span></div>
+  </div>
+
+  <div class="callout" style="margin-top:32px">
+    <div class="cl-label">Attenzione · CSV italiani</div>
+    <div class="cl-text">
+      Quando leggerete un file <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">.csv</code> salvato da Excel in italiano, troverete la <strong>virgola</strong> come separatore decimale. Python vuole il punto: bisogna sostituire prima della conversione, oppure indicare il <em>decimal=","</em> a pandas. Argomento della Lezione 07.
+    </div>
+  </div>
+</section>
+
+<!-- SCRIPT CONVERTITORE -->
+<section id="script">
+  <div class="section-head">
+    <div class="num">§ 09 · Lo script · conversioni_aero.py</div>
+    <h2>Quattro grandezze,<br>quattro <em>conversioni</em>,<br><span class="accent">costanti maiuscole</span>.</h2>
+    <p class="lead">
+      Il convertitore che scriveremo insieme. Quote, velocità, pressioni, temperature: ognuna con il suo fattore. I fattori di conversione sono <em>esatti</em> per definizione internazionale — vanno usati alla virgola che conoscete.
+    </p>
+  </div>
+
+  <div class="isa-box" style="margin-top:24px">
+    <div class="isa-formulas">
+      <h4>Fattori esatti</h4>
+      <p class="desc">Definizioni internazionali (1959, ICAO Annex 5, ISO 80000). Conviene impararle a memoria.</p>
+      <div class="isa-formula" data-formula="1\,\text{ft} = 0{,}3048\,\text{m}"></div>
+      <div class="isa-formula" data-formula="1\,\text{kt} = \dfrac{1852}{3600}\,\text{m/s} \approx 0{,}5144\,\text{m/s}"></div>
+      <div class="isa-formula" data-formula="1\,\text{inHg} = 3386{,}389\,\text{Pa}"></div>
+    </div>
+    <div class="isa-const">
+      <h4>Temperature</h4>
+      <dl>
+        <dt>°C → K</dt><dd>T_K = T_C + 273,15</dd>
+        <dt>°C → °F</dt><dd>T_F = T_C · 9/5 + 32</dd>
+        <dt>0 K</dt><dd>= −273,15 °C (zero assoluto)</dd>
+        <dt>0 °F</dt><dd>= −17,78 °C (Fahrenheit)</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="code-stage" style="margin-top:32px">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>conversioni_aero.py · python 3.x</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="st">"""</span>
+<span class="ln">2</span><span class="st">conversioni_aero.py</span>
+<span class="ln">3</span><span class="st">Convertitore di unità di misura aeronautiche.</span>
+<span class="ln">4</span><span class="st">Riferimenti: ICAO Annex 5, ISO 80000.</span>
+<span class="ln">5</span><span class="st">"""</span>
+<span class="ln">6</span>
+<span class="ln">7</span><span class="cm"># --- Costanti di conversione (valori esatti) -----------------------------</span>
+<span class="ln">8</span>FT_TO_M       <span class="op">=</span> <span class="nm">0.3048</span>          <span class="cm"># m/ft  · definizione internazionale 1959</span>
+<span class="ln">9</span>KT_TO_MS      <span class="op">=</span> <span class="nm">1852.0</span> <span class="op">/</span> <span class="nm">3600.0</span> <span class="cm"># (m/s)/kt · 1 NM = 1852 m, 1 h = 3600 s</span>
+<span class="ln">10</span>INHG_TO_PA    <span class="op">=</span> <span class="nm">3386.389</span>        <span class="cm"># Pa/inHg · a 0 °C, valore standard</span>
+<span class="ln">11</span>T_OFFSET_CK   <span class="op">=</span> <span class="nm">273.15</span>          <span class="cm"># K · 0 °C in kelvin</span>
+<span class="ln">12</span>
+<span class="ln">13</span><span class="cm"># --- Acquisizione dati da tastiera ---------------------------------------</span>
+<span class="ln">14</span>quota_ft <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"Quota              [ft]   : "</span>))
+<span class="ln">15</span>v_kt     <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"Velocità TAS       [kt]   : "</span>))
+<span class="ln">16</span>p_hPa    <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"Pressione statica  [hPa]  : "</span>))
+<span class="ln">17</span>T_C      <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"Temperatura        [degC] : "</span>))
+<span class="ln">18</span>
+<span class="ln">19</span><span class="cm"># --- Conversioni ---------------------------------------------------------</span>
+<span class="ln">20</span>quota_m  <span class="op">=</span> quota_ft <span class="op">*</span> FT_TO_M            <span class="cm"># ft  → m</span>
+<span class="ln">21</span>v_ms     <span class="op">=</span> v_kt <span class="op">*</span> KT_TO_MS                <span class="cm"># kt  → m/s</span>
+<span class="ln">22</span>v_kmh    <span class="op">=</span> v_ms <span class="op">*</span> <span class="nm">3.6</span>                     <span class="cm"># m/s → km/h</span>
+<span class="ln">23</span>p_Pa     <span class="op">=</span> p_hPa <span class="op">*</span> <span class="nm">100.0</span>                  <span class="cm"># hPa → Pa</span>
+<span class="ln">24</span>p_inHg   <span class="op">=</span> p_Pa <span class="op">/</span> INHG_TO_PA              <span class="cm"># Pa  → inHg</span>
+<span class="ln">25</span>T_K      <span class="op">=</span> T_C <span class="op">+</span> T_OFFSET_CK              <span class="cm"># °C  → K</span>
+<span class="ln">26</span>T_F      <span class="op">=</span> T_C <span class="op">*</span> <span class="nm">9.0</span><span class="op">/</span><span class="nm">5.0</span> <span class="op">+</span> <span class="nm">32.0</span>           <span class="cm"># °C  → °F</span>
+<span class="ln">27</span>
+<span class="ln">28</span><span class="cm"># --- Output formattato ---------------------------------------------------</span>
+<span class="ln">29</span><span class="bi">print</span>(<span class="st">f"Quota     : {quota_ft:8.1f} ft  = {quota_m:8.3f} m"</span>)
+<span class="ln">30</span><span class="bi">print</span>(<span class="st">f"Velocità  : {v_kt:8.2f} kt  = {v_ms:8.3f} m/s = {v_kmh:8.3f} km/h"</span>)
+<span class="ln">31</span><span class="bi">print</span>(<span class="st">f"Pressione : {p_hPa:8.2f} hPa = {p_Pa:8.1f} Pa = {p_inHg:8.3f} inHg"</span>)
+<span class="ln">32</span><span class="bi">print</span>(<span class="st">f"Temperat. : {T_C:8.2f} °C  = {T_K:8.3f} K  = {T_F:8.3f} °F"</span>)</div>
+  </div>
+
+  <h3 style="margin-top:64px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Casi di prova · validazione</h3>
+  <div class="val-table">
+    <table>
+      <thead>
+        <tr><th>Input</th><th>Output atteso</th><th style="text-align:left">Significato</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight"><td>h = 35 000 ft</td><td>10 668,000 m</td><td style="text-align:left;color:var(--ink-dim);font-style:italic">crociera lungo raggio</td></tr>
+        <tr><td>V = 250 kt</td><td>128,611 m/s · 463,000 km/h</td><td style="text-align:left;color:var(--ink-dim);font-style:italic">limite operativo sotto FL100</td></tr>
+        <tr><td>p = 1013,25 hPa</td><td>101 325 Pa · 29,921 inHg</td><td style="text-align:left;color:var(--ink-dim);font-style:italic">pressione ISA al SL</td></tr>
+        <tr class="highlight"><td>T = 15 °C</td><td>288,15 K · 59 °F</td><td style="text-align:left;color:var(--ink-dim);font-style:italic">temperatura ISA al SL</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- DIMENSIONAL -->
+<section id="dimensional">
+  <div class="section-head">
+    <div class="num">§ 10 · Una piccola dimostrazione · 1 kt = 0,5144 m/s</div>
+    <h2>Le unità sono<br>la <em>grammatica</em><br>della <span class="accent">fisica</span>.</h2>
+    <p class="lead">
+      Una conversione non è un numero memorizzato a memoria: è una <em>definizione internazionale</em> che si può ricostruire dai primi principi. Il miglio nautico viene dalla geografia, il nodo dalla nautica, l'intera filiera ha senso solo se ne riconosciamo l'origine.
+    </p>
+  </div>
+
+  <div class="isa-box">
+    <div class="isa-formulas">
+      <h4>Dimostrazione · dal miglio nautico al nodo</h4>
+      <p class="desc">Definizioni di base: 1 NM = 1852 m (BIPM, 1929), 1 nodo = 1 NM/h. Tutto il resto è aritmetica.</p>
+      <div class="isa-formula" data-formula="1\,\text{kt} = \dfrac{1\,\text{NM}}{1\,\text{h}} = \dfrac{1852\,\text{m}}{3600\,\text{s}} \approx 0{,}5144\,\text{m/s}"></div>
+    </div>
+    <div class="isa-const">
+      <h4>Regola del pollice</h4>
+      <p style="font-family:'Fraunces',serif;font-style:italic;color:var(--ink-dim);font-size:16px;margin-bottom:18px;line-height:1.7">
+        Per una <em>stima al volo</em> in cabina: divisione per due.
+      </p>
+      <dl>
+        <dt>V [m/s]</dt><dd>≈ V [kt] / 2</dd>
+        <dt>480 kt</dt><dd>≈ 240 m/s (esatto: 247)</dd>
+        <dt>250 kt</dt><dd>≈ 125 m/s (esatto: 128,6)</dd>
+        <dt>Errore</dt><dd>≈ 3 % · sufficiente a memoria</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:48px">
+    <div class="cl-label">Buona pratica · la libreria pint</div>
+    <div class="cl-text">
+      Per progetti complessi (gallerie del vento, prove di volo, simulazioni) esiste la libreria <strong>pint</strong> che gestisce le unità come oggetti, sollevando un'eccezione quando una formula è dimensionalmente inconsistente. La incontreremo a fine corso. Nei programmi didattici teniamo i <em>nomi-con-unità</em> e i commenti: più trasparenti, stessa filosofia.
+    </div>
+  </div>
+
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Esercizi per casa</h3>
+  <div class="exercises">
+    <div class="ex-card">
+      <div class="ex-n">Ex · 01</div>
+      <div class="ex-t">Estensione del convertitore</div>
+      <div class="ex-d">Aggiungete le grandezze: <strong>massa</strong> (lb ↔ kg, <code>1 lb = 0,45359237 kg</code>) e <strong>forza</strong> (lbf ↔ N, <code>1 lbf = 4,4482216 N</code>). Mantenete lo stile delle costanti in MAIUSCOLO.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-n">Ex · 02</div>
+      <div class="ex-t">Pressione dinamica multi-unità</div>
+      <div class="ex-d">Dato V in <code>kt</code> e ρ in <code>kg/m³</code>, calcolate q in Pa, hPa e psf (<code>1 psf = 47,88 Pa</code>). Verificate dimensionalmente.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-n">Ex · 03</div>
+      <div class="ex-t">Lettura critica</div>
+      <div class="ex-d">Senza eseguire il codice, predite l'output di <code>print(7/2, 7//2, 7%2, 7**2)</code>. Spiegate perché il primo è float e gli altri tre sono int.</div>
+    </div>
+  </div>
+</section>
+
+<!-- WEB · REYNOLDS -->
+<section id="web">
+  <div class="section-head">
+    <div class="num">§ 11 · Costruire dal nulla · Reynolds nel browser</div>
+    <h2>Questa volta<br>non <em>traduciamo</em>:<br><span class="accent">progettiamo</span>.</h2>
+    <p class="lead">
+      Lo script Python di oggi serve a <em>noi</em>, in classe, per imparare variabili e tipi. Ma ora apriamo un secondo cantiere parallelo: chiediamo all'IA di costruire da zero — direttamente in HTML/JS — un calcolatore del numero di Reynolds. Non perché Python non basterebbe, ma perché la <em>forma</em> giusta per quel problema è il web: input continui, classificazione automatica, preset rapidi, condivisione immediata. La specifica giusta porta allo strumento giusto.
+    </p>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Una scelta di forma, non di pigrizia</div>
+    <div class="cl-text">
+      Quando il <em>prodotto finito</em> è un'esperienza interattiva — qualcuno che muove uno slider e vede il regime cambiare colore — chiederla direttamente in HTML/JS è la scelta corretta. Quando invece il prodotto è una <strong>libreria di calcolo</strong> da riusare in altri script (Python, MATLAB, dentro un notebook), allora si scrive in Python. L'IA non sostituisce questa scelta: la <em>esegue</em>.
+    </div>
+  </div>
+
+  <!-- La fisica -->
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">La fisica · cosa deve calcolare</h3>
+  <p style="margin-bottom:24px;font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--ink-dim);line-height:1.7;max-width:780px">
+    Il numero di Reynolds è il <em>rapporto</em> tra forze d'inerzia e forze viscose in un fluido. Decide se lo strato limite su un'ala sarà laminare o turbolento, se in galleria del vento riusciremo a riprodurre il flusso reale, se la transizione avverrà a metà corda o al bordo d'attacco.
+  </p>
+
+  <div class="isa-box">
+    <div class="isa-formulas">
+      <h4>Le tre formule che servono</h4>
+      <p class="desc">Reynolds + ISA (Lez. 01) + legge di Sutherland per la viscosità dinamica dell'aria in funzione della temperatura.</p>
+      <div class="isa-formula" data-formula="Re = \dfrac{\rho\,V\,L}{\mu}"></div>
+      <div class="isa-formula" data-formula="\mu(T) = \mu_0 \left(\dfrac{T}{T_{\text{ref}}}\right)^{3/2}\,\dfrac{T_{\text{ref}} + S}{T + S}"></div>
+      <div class="isa-formula" data-formula="\rho(h),\;T(h),\;p(h) \;\;\text{dal modello ISA (Lez. 01)}"></div>
+    </div>
+    <div class="isa-const">
+      <h4>Costanti di Sutherland · aria</h4>
+      <dl>
+        <dt>μ₀</dt><dd>= 1,716·10⁻⁵ Pa·s</dd>
+        <dt>T_ref</dt><dd>= 273,15 K</dd>
+        <dt>S</dt><dd>= 110,4 K · costante di Sutherland</dd>
+        <dt>μ(288.15 K)</dt><dd>= 1,789·10⁻⁵ Pa·s · al SL ISA</dd>
+        <dt>Soglie Re</dt><dd>laminare &lt; 5·10⁵ &lt; transiz. &lt; 10⁶ &lt; turbolento</dd>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Il prompt generativo -->
+  <div class="translate-prompt" style="margin-top:48px">
+    <div class="ptag">✓ Prompt generativo · costruzione diretta in HTML/JS</div>
+    <div class="pname">Cosa · Dati · Ipotesi · Forma · Validazione</div>
+    <q><strong>Crea</strong> un singolo file HTML autocontenuto (HTML + CSS + JavaScript, nessuna libreria esterna) che sia un <em>calcolatore del numero di Reynolds</em> per problemi aeronautici. L'utente inserisce: <em>V [m/s]</em>, <em>L [m]</em> (lunghezza caratteristica · corda, fusoliera, diametro), <em>h [m]</em> (quota ISA). Il programma deve calcolare in JavaScript: (1) T, p, ρ dal modello ISA-ICAO in troposfera con costanti T₀=288,15 K, p₀=101325 Pa, g₀=9,80665 m/s², R=287,05, λ=−0,0065; (2) la viscosità dinamica μ(T) con la legge di Sutherland: μ = μ₀·(T/T_ref)^(3/2)·(T_ref+S)/(T+S) con μ₀=1,716·10⁻⁵, T_ref=273,15, S=110,4; (3) Re = ρ·V·L/μ. Mostra il risultato in <strong>notazione scientifica</strong>, classifica il regime con codifica cromatica (laminare se Re&lt;5·10⁵, transizione se 5·10⁵≤Re&lt;10⁶, turbolento se Re≥10⁶), mostra i valori intermedi T, p, ρ, μ. Aggiungi <strong>4 preset</strong>: ultraleggero a bassa quota, Cessna 172, jet di linea a FL350, prova in galleria del vento. Stile sobrio, dark mode, font monospace per i numeri. Commenta il codice JavaScript sezione per sezione. <strong>Validazione richiesta:</strong> al livello del mare (h=0) μ deve risultare ≈ 1,789·10⁻⁵ Pa·s.</q>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Notate la simmetria con la Lezione 01</div>
+    <div class="cl-text">
+      <strong>Cosa</strong> deve calcolare, con <strong>quali dati</strong>, sotto <strong>quali ipotesi</strong>, in <strong>quale forma</strong>, e con <strong>quale validazione</strong>. Stessa grammatica del prompt ISA (Lez. 01 § 5), applicata a un problema più articolato: due modelli che lavorano in cascata, una classificazione fisica, un'interfaccia interattiva. Più la specifica è precisa, meno l'IA deve indovinare.
+    </div>
+  </div>
+
+  <!-- Cosa controlleremo -->
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Cosa controlleremo nel codice generato</h3>
+
+  <div class="exercises" style="margin-top:0">
+    <div class="ex-card">
+      <div class="ex-n">Check · 01</div>
+      <div class="ex-t">Costanti di Sutherland</div>
+      <div class="ex-d">Le tre costanti μ₀, T_ref, S compaiono <em>esattamente</em> come da specifica? Sono in <code>MAIUSCOLO</code>? Stesso scrupolo che useremmo in uno script Python.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-n">Check · 02</div>
+      <div class="ex-t">Verifica al SL</div>
+      <div class="ex-d">Inserisci h = 0 m e leggi μ: deve essere ≈ <code>1,789·10⁻⁵ Pa·s</code>. Se viene un valore diverso, l'IA ha sbagliato l'esponente o la formula.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-n">Check · 03</div>
+      <div class="ex-t">Ordini di grandezza</div>
+      <div class="ex-d">Preset jet di linea → Re ≈ <code>10⁷</code>. Preset galleria del vento → Re ≈ <code>4·10⁵</code>. Se gli ordini di grandezza non tornano, una formula è sbagliata.</div>
+    </div>
+  </div>
+
+  <!-- Live demo iframe -->
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Il risultato · provatelo dal vivo</h3>
+  <p style="margin-bottom:24px;font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--ink-dim);line-height:1.7;max-width:780px">
+    Ecco il calcolatore generato e validato. Premete i preset per vedere Re variare di tre ordini di grandezza tra una galleria didattica e un jet di linea. La barra in basso vi mostra istantaneamente il regime.
+  </p>
+  <div class="demo-wrap">
+    <div class="demo-head">
+      <span>● reynolds_calc.html · live demo</span>
+      <span class="url"><span>username</span>.github.io/aero-python/<span>reynolds</span>.html</span>
+    </div>
+    <iframe class="demo-iframe" srcdoc="<!DOCTYPE html>
+<html lang=&quot;it&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<title>Numero di Reynolds · Calcolatore aeronautico</title>
+<style>
+  :root{
+    --bg:#0a1417;
+    --panel:#0f1c20;
+    --ink:#eef4f1;
+    --dim:#9bb1ad;
+    --teal:#6df0d2;
+    --gold:#f7c873;
+    --rose:#ff8a8a;
+    --laminar:#94d8ff;
+    --transitional:#f7c873;
+    --turbulent:#ff8ad0;
+    --line:rgba(109,240,210,0.2);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(ellipse at top,#102126,#0a1417 60%);
+    color:var(--ink);font-family:&quot;Segoe UI&quot;,system-ui,sans-serif;
+    min-height:100vh;padding:40px 20px;line-height:1.5;
+  }
+  .container{max-width:920px;margin:0 auto}
+
+  header{margin-bottom:32px;text-align:center}
+  header .tag{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.3em;
+    color:var(--gold);text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  header h1{
+    font-weight:300;font-size:clamp(28px,4.5vw,42px);
+    letter-spacing:-0.01em;
+  }
+  header h1 em{color:var(--teal);font-style:italic}
+  header p{
+    margin-top:10px;color:var(--dim);font-size:15px;
+    max-width:620px;margin-left:auto;margin-right:auto;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:28px;margin-bottom:20px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.3);
+  }
+  .panel-title{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.22em;
+    color:var(--gold);text-transform:uppercase;
+    margin-bottom:18px;
+  }
+
+  .input-grid{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:18px;
+  }
+  .field{display:flex;flex-direction:column}
+  label{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.16em;
+    color:var(--teal);text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  label .unit{color:var(--dim);font-weight:400;letter-spacing:0.08em}
+
+  input[type=&quot;number&quot;], select{
+    width:100%;background:#06121a;
+    border:1px solid var(--line);border-radius:4px;
+    color:var(--ink);font-family:&quot;Courier New&quot;,monospace;
+    font-size:16px;padding:11px 14px;
+    transition:border-color 0.2s;
+  }
+  input[type=&quot;number&quot;]:focus,select:focus{outline:none;border-color:var(--teal)}
+  select{cursor:pointer}
+
+  .preset-row{
+    display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;
+  }
+  .preset{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--dim);
+    padding:8px 14px;border-radius:4px;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.1em;
+    cursor:pointer;transition:all 0.2s;
+    text-transform:uppercase;
+  }
+  .preset:hover{border-color:var(--teal);color:var(--teal);background:rgba(109,240,210,0.06)}
+
+  button.calc{
+    margin-top:18px;width:100%;
+    background:var(--gold);color:#1a1208;
+    border:none;border-radius:4px;
+    padding:14px;cursor:pointer;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:14px;letter-spacing:0.18em;
+    text-transform:uppercase;font-weight:700;
+    transition:transform 0.15s,box-shadow 0.15s;
+  }
+  button.calc:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(247,200,115,0.3)}
+  button.calc:active{transform:translateY(0)}
+
+  /* Result */
+  .reynolds-display{
+    text-align:center;padding:24px 20px;
+    background:linear-gradient(135deg,rgba(109,240,210,0.06),rgba(0,0,0,0.3));
+    border:1px solid var(--line);border-radius:6px;margin-bottom:18px;
+  }
+  .reynolds-label{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.25em;
+    color:var(--dim);text-transform:uppercase;margin-bottom:10px;
+  }
+  .reynolds-value{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:clamp(36px,7vw,56px);
+    font-weight:700;color:var(--ink);
+    letter-spacing:-0.02em;
+  }
+  .reynolds-regime{
+    margin-top:12px;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:13px;letter-spacing:0.22em;
+    text-transform:uppercase;font-weight:700;
+  }
+  .regime-laminar{color:var(--laminar)}
+  .regime-transitional{color:var(--transitional)}
+  .regime-turbulent{color:var(--turbulent)}
+
+  /* Bar */
+  .regime-bar{
+    margin-top:18px;height:8px;
+    background:linear-gradient(to right,
+      var(--laminar) 0%, var(--laminar) 20%,
+      var(--transitional) 25%, var(--transitional) 45%,
+      var(--turbulent) 50%, var(--turbulent) 100%);
+    border-radius:4px;position:relative;
+  }
+  .regime-marker{
+    position:absolute;top:-4px;
+    width:4px;height:16px;
+    background:var(--ink);
+    border-radius:2px;
+    transform:translateX(-2px);
+    transition:left 0.5s ease;
+    box-shadow:0 0 8px rgba(255,255,255,0.6);
+  }
+  .regime-scale{
+    margin-top:8px;display:flex;justify-content:space-between;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:10px;color:var(--dim);letter-spacing:0.1em;
+  }
+
+  /* Intermediate values */
+  .intermediate{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;
+  }
+  .interm-card{
+    background:#06121a;
+    border:1px solid var(--line);
+    border-left:2px solid var(--teal);
+    border-radius:4px;padding:14px 16px;
+  }
+  .interm-card .name{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:10px;letter-spacing:0.18em;
+    color:var(--dim);text-transform:uppercase;margin-bottom:6px;
+  }
+  .interm-card .value{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:17px;color:var(--ink);font-weight:700;
+  }
+  .interm-card .value-unit{font-size:11px;color:var(--teal);margin-left:4px;font-weight:400}
+
+  .error-msg{
+    color:var(--rose);background:rgba(255,138,138,0.08);
+    border:1px solid rgba(255,138,138,0.3);
+    padding:14px 18px;border-radius:4px;
+    font-size:14px;display:none;margin-bottom:18px;
+  }
+  .error-msg.show{display:block}
+
+  .formula-row{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:14px;color:var(--dim);
+    background:rgba(0,0,0,0.3);
+    padding:14px 18px;border-radius:4px;
+    margin-bottom:14px;line-height:1.7;
+  }
+  .formula-row b{color:var(--gold);font-weight:700}
+  .formula-row em{color:var(--teal);font-style:normal}
+
+  footer{
+    margin-top:40px;text-align:center;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;color:var(--dim);letter-spacing:0.1em;
+  }
+
+  @media (max-width:600px){
+    .input-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class=&quot;container&quot;>
+
+  <header>
+    <div class=&quot;tag&quot;>Re = ρVL/μ · Sutherland · Aero</div>
+    <h1>Numero di <em>Reynolds</em> · Calcolatore</h1>
+    <p>Stima Re a partire da velocità, lunghezza caratteristica, quota e temperatura. Viscosità dinamica calcolata con la legge di Sutherland; densità dal modello ISA.</p>
+  </header>
+
+  <!-- INPUT -->
+  <div class=&quot;panel&quot;>
+    <div class=&quot;panel-title&quot;>Input · Condizioni di volo</div>
+
+    <div class=&quot;input-grid&quot;>
+      <div class=&quot;field&quot;>
+        <label>Velocità V <span class=&quot;unit&quot;>[m/s]</span></label>
+        <input type=&quot;number&quot; id=&quot;v-input&quot; value=&quot;50&quot; step=&quot;1&quot; min=&quot;0&quot;>
+      </div>
+      <div class=&quot;field&quot;>
+        <label>Lunghezza caratteristica L <span class=&quot;unit&quot;>[m]</span></label>
+        <input type=&quot;number&quot; id=&quot;L-input&quot; value=&quot;0.5&quot; step=&quot;0.05&quot; min=&quot;0&quot;>
+      </div>
+      <div class=&quot;field&quot;>
+        <label>Quota h <span class=&quot;unit&quot;>[m]</span> · ISA</label>
+        <input type=&quot;number&quot; id=&quot;h-input&quot; value=&quot;0&quot; step=&quot;500&quot; min=&quot;0&quot; max=&quot;11000&quot;>
+      </div>
+      <div class=&quot;field&quot;>
+        <label>Geometria · L è...</label>
+        <select id=&quot;geometry&quot;>
+          <option value=&quot;airfoil&quot;>Corda di un profilo alare</option>
+          <option value=&quot;wing&quot;>Corda media aerodinamica (ala)</option>
+          <option value=&quot;fuselage&quot;>Lunghezza di fusoliera</option>
+          <option value=&quot;cylinder&quot;>Diametro di cilindro</option>
+          <option value=&quot;sphere&quot;>Diametro di sfera</option>
+          <option value=&quot;custom&quot;>Altro / personalizzato</option>
+        </select>
+      </div>
+    </div>
+
+    <div class=&quot;preset-row&quot;>
+      <button class=&quot;preset&quot; data-preset=&quot;ultralight&quot;>Ultraleggero · 90 km/h, c=1,2 m</button>
+      <button class=&quot;preset&quot; data-preset=&quot;cessna&quot;>Cessna 172 · 200 km/h, c=1,5 m</button>
+      <button class=&quot;preset&quot; data-preset=&quot;cruise&quot;>Jet di linea · Mach 0,78, c=4 m, FL350</button>
+      <button class=&quot;preset&quot; data-preset=&quot;wind&quot;>Galleria del vento · 30 m/s, L=0,2 m</button>
+    </div>
+
+    <button class=&quot;calc&quot; id=&quot;calc-btn&quot;>Calcola Reynolds</button>
+  </div>
+
+  <div class=&quot;error-msg&quot; id=&quot;error-msg&quot;>Quota fuori dal campo di validità (0–11 000 m).</div>
+
+  <!-- RISULTATO -->
+  <div class=&quot;panel&quot;>
+    <div class=&quot;panel-title&quot;>Output · Numero di Reynolds</div>
+    <div class=&quot;reynolds-display&quot;>
+      <div class=&quot;reynolds-label&quot;>Re = ρ · V · L / μ</div>
+      <div class=&quot;reynolds-value&quot; id=&quot;out-Re&quot;>3,4 · 10⁶</div>
+      <div class=&quot;reynolds-regime&quot; id=&quot;out-regime&quot;>Regime turbolento</div>
+    </div>
+
+    <div class=&quot;regime-bar&quot;>
+      <div class=&quot;regime-marker&quot; id=&quot;regime-marker&quot; style=&quot;left:75%&quot;></div>
+    </div>
+    <div class=&quot;regime-scale&quot;>
+      <span>10²</span><span>10³</span><span>10⁴</span><span>10⁵ <span style=&quot;color:var(--gold)&quot;>· transizione</span></span><span>10⁶</span><span>10⁷</span>
+    </div>
+  </div>
+
+  <!-- VALORI INTERMEDI -->
+  <div class=&quot;panel&quot;>
+    <div class=&quot;panel-title&quot;>Grandezze intermedie · ISA + Sutherland</div>
+
+    <div class=&quot;formula-row&quot;>
+      <b>μ(T)</b> = μ₀ · (T/T₀)^(3/2) · (T₀ + S)/(T + S) &amp;nbsp;·&amp;nbsp;
+      <em>μ₀</em> = 1,716·10⁻⁵ Pa·s, <em>T₀</em> = 273,15 K, <em>S</em> = 110,4 K
+    </div>
+
+    <div class=&quot;intermediate&quot;>
+      <div class=&quot;interm-card&quot;>
+        <div class=&quot;name&quot;>Temperatura T</div>
+        <div class=&quot;value&quot;><span id=&quot;out-T&quot;>288.15</span><span class=&quot;value-unit&quot;>K</span></div>
+      </div>
+      <div class=&quot;interm-card&quot;>
+        <div class=&quot;name&quot;>Pressione p</div>
+        <div class=&quot;value&quot;><span id=&quot;out-p&quot;>101325</span><span class=&quot;value-unit&quot;>Pa</span></div>
+      </div>
+      <div class=&quot;interm-card&quot;>
+        <div class=&quot;name&quot;>Densità ρ</div>
+        <div class=&quot;value&quot;><span id=&quot;out-rho&quot;>1.225</span><span class=&quot;value-unit&quot;>kg/m³</span></div>
+      </div>
+      <div class=&quot;interm-card&quot;>
+        <div class=&quot;name&quot;>Viscosità μ</div>
+        <div class=&quot;value&quot;><span id=&quot;out-mu&quot;>1.789e-5</span><span class=&quot;value-unit&quot;>Pa·s</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Soglie indicative -->
+  <div class=&quot;panel&quot;>
+    <div class=&quot;panel-title&quot;>Soglie indicative · profili alari</div>
+    <div style=&quot;font-family:'Courier New',monospace;font-size:13px;color:var(--dim);line-height:2&quot;>
+      <div><span style=&quot;color:var(--laminar);font-weight:700&quot;>▸ Re &amp;lt; 5·10⁵</span> · strato limite prevalentemente laminare</div>
+      <div><span style=&quot;color:var(--transitional);font-weight:700&quot;>▸ 5·10⁵ ÷ 10⁶</span> · zona di transizione (dipende da rugosità, turbolenza esterna, gradiente di pressione)</div>
+      <div><span style=&quot;color:var(--turbulent);font-weight:700&quot;>▸ Re &amp;gt; 10⁶</span> · strato limite prevalentemente turbolento</div>
+    </div>
+  </div>
+
+  <footer>
+    Modello: ISA-ICAO troposfera + viscosità di Sutherland · <code style=&quot;color:var(--teal)&quot;>reynolds_calc.html</code> · Lezione 02
+  </footer>
+</div>
+
+<script>
+/* ===========================================================
+   COSTANTI · ISA + Sutherland + Reynolds
+   =========================================================== */
+const T0 = 288.15, p0 = 101325.0, g0 = 9.80665, R = 287.05, lam = -0.0065;
+const MU0 = 1.716e-5;     // Pa·s · viscosità di riferimento
+const T_REF_MU = 273.15;  // K · temperatura di riferimento Sutherland
+const S = 110.4;          // K · costante di Sutherland per l'aria
+
+/* ===========================================================
+   FUNZIONI FISICHE
+   =========================================================== */
+function isaTroposfera(h){
+  if(h < 0 || h > 11000) return null;
+  const T = T0 + lam * h;
+  const p = p0 * Math.pow(T / T0, -g0 / (lam * R));
+  const rho = p / (R * T);
+  return { T, p, rho };
+}
+
+/* Sutherland · viscosità dinamica dell'aria in funzione della T */
+function sutherland(T){
+  return MU0 * Math.pow(T / T_REF_MU, 1.5) * (T_REF_MU + S) / (T + S);
+}
+
+function reynolds(rho, V, L, mu){
+  return rho * V * L / mu;
+}
+
+/* ===========================================================
+   FORMATTAZIONE
+   =========================================================== */
+function fmtSci(x){
+  if(x === 0) return &quot;0&quot;;
+  if(x < 1000) return x.toFixed(0);
+  const exp = Math.floor(Math.log10(Math.abs(x)));
+  const mant = x / Math.pow(10, exp);
+  const sup = &quot;⁰¹²³⁴⁵⁶⁷⁸⁹&quot;;
+  const expStr = String(exp).split(&quot;&quot;).map(d => sup[parseInt(d)] || d).join(&quot;&quot;);
+  return mant.toFixed(2).replace(&quot;.&quot;,&quot;,&quot;) + &quot; · 10&quot; + expStr;
+}
+
+function fmtMu(x){
+  // 1.789e-5 → &quot;1.789·10⁻⁵&quot;
+  const exp = Math.floor(Math.log10(Math.abs(x)));
+  const mant = x / Math.pow(10, exp);
+  const sup = &quot;⁰¹²³⁴⁵⁶⁷⁸⁹⁻&quot;;
+  const expStr = String(exp).split(&quot;&quot;).map(d => d===&quot;-&quot;?&quot;⁻&quot;:sup[parseInt(d)]||d).join(&quot;&quot;);
+  return mant.toFixed(3) + &quot;·10&quot; + expStr;
+}
+
+/* ===========================================================
+   REGIME E POSIZIONE MARKER
+   =========================================================== */
+function getRegime(Re){
+  if(Re < 5e5)  return { label:&quot;Strato limite laminare&quot;,    cls:&quot;regime-laminar&quot; };
+  if(Re < 1e6)  return { label:&quot;Zona di transizione&quot;,        cls:&quot;regime-transitional&quot; };
+  return                 { label:&quot;Strato limite turbolento&quot;, cls:&quot;regime-turbulent&quot; };
+}
+
+/* Posiziona il marker sulla barra (scala logaritmica 10²–10⁷) */
+function markerLeft(Re){
+  if(Re <= 0) return 0;
+  const logRe = Math.log10(Re);
+  const minL = 2, maxL = 7;
+  const pct = Math.max(0, Math.min(1, (logRe - minL)/(maxL - minL)));
+  return pct * 100;
+}
+
+/* ===========================================================
+   UI
+   =========================================================== */
+const vInput   = document.getElementById(&quot;v-input&quot;);
+const LInput   = document.getElementById(&quot;L-input&quot;);
+const hInput   = document.getElementById(&quot;h-input&quot;);
+const geom     = document.getElementById(&quot;geometry&quot;);
+const btnCalc  = document.getElementById(&quot;calc-btn&quot;);
+const errorMsg = document.getElementById(&quot;error-msg&quot;);
+
+const outRe     = document.getElementById(&quot;out-Re&quot;);
+const outRegime = document.getElementById(&quot;out-regime&quot;);
+const marker    = document.getElementById(&quot;regime-marker&quot;);
+const outT      = document.getElementById(&quot;out-T&quot;);
+const outP      = document.getElementById(&quot;out-p&quot;);
+const outRho    = document.getElementById(&quot;out-rho&quot;);
+const outMu     = document.getElementById(&quot;out-mu&quot;);
+
+function aggiorna(){
+  const V = parseFloat(vInput.value);
+  const L = parseFloat(LInput.value);
+  const h = parseFloat(hInput.value);
+
+  if(isNaN(V) || isNaN(L) || isNaN(h) || V<=0 || L<=0){
+    errorMsg.textContent = &quot;Inserisci valori numerici positivi per V, L e h.&quot;;
+    errorMsg.classList.add(&quot;show&quot;);
+    return;
+  }
+
+  const atm = isaTroposfera(h);
+  if(!atm){
+    errorMsg.textContent = &quot;Quota fuori dal campo di validità (0–11 000 m).&quot;;
+    errorMsg.classList.add(&quot;show&quot;);
+    return;
+  }
+  errorMsg.classList.remove(&quot;show&quot;);
+
+  const mu = sutherland(atm.T);
+  const Re = reynolds(atm.rho, V, L, mu);
+
+  outT.textContent   = atm.T.toFixed(2);
+  outP.textContent   = Math.round(atm.p).toLocaleString(&quot;it-IT&quot;);
+  outRho.textContent = atm.rho.toFixed(4);
+  outMu.textContent  = fmtMu(mu);
+
+  outRe.textContent = fmtSci(Re);
+
+  const reg = getRegime(Re);
+  outRegime.textContent = reg.label;
+  outRegime.className = &quot;reynolds-regime &quot; + reg.cls;
+  marker.style.left = markerLeft(Re) + &quot;%&quot;;
+}
+
+/* Preset typical conditions */
+const presets = {
+  ultralight: { V:25,   L:1.2, h:300,   geom:&quot;airfoil&quot; },
+  cessna:     { V:55.5, L:1.5, h:1500,  geom:&quot;airfoil&quot; },
+  cruise:     { V:230,  L:4.0, h:10670, geom:&quot;wing&quot;    },
+  wind:       { V:30,   L:0.2, h:0,     geom:&quot;airfoil&quot; }
+};
+document.querySelectorAll(&quot;.preset&quot;).forEach(btn => {
+  btn.addEventListener(&quot;click&quot;, () => {
+    const p = presets[btn.dataset.preset];
+    vInput.value = p.V; LInput.value = p.L; hInput.value = p.h; geom.value = p.geom;
+    aggiorna();
+  });
+});
+
+btnCalc.addEventListener(&quot;click&quot;, aggiorna);
+[vInput, LInput, hInput].forEach(el => {
+  el.addEventListener(&quot;keydown&quot;, e => { if(e.key===&quot;Enter&quot;) aggiorna(); });
+});
+
+aggiorna();  // calcolo iniziale
+</script>
+</body>
+</html>
+" title="Calcolatore Reynolds" style="height:820px"></iframe>
+  </div>
+
+  <!-- GitHub -->
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Aggiornare il repo · seconda lezione, stesso processo</h3>
+  <p style="margin-bottom:24px;font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--ink-dim);line-height:1.7;max-width:780px">
+    Il repository <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">aero-python</code> esiste già dalla Lezione 01. Aggiungere il nuovo calcolatore è ancora più semplice — GitHub Pages è già attivo.
+  </p>
+  <div class="gh-steps">
+    <div class="gh-step">
+      <div class="gs-n">Step · 01</div>
+      <div class="gs-t">Apri il tuo repo</div>
+      <div class="gs-d"><code>github.com/username/aero-python</code> · al suo interno trovi già <code>isa_troposfera.html</code> della scorsa lezione.</div>
+    </div>
+    <div class="gh-step">
+      <div class="gs-n">Step · 02</div>
+      <div class="gs-t">Carica il file</div>
+      <div class="gs-d"><code>Add file → Upload files</code> · trascina <code>reynolds_calc.html</code> · commit message: <em>"Add Reynolds calculator (L02)"</em>.</div>
+    </div>
+    <div class="gh-step">
+      <div class="gs-n">Step · 03</div>
+      <div class="gs-t">Aggiorna il README</div>
+      <div class="gs-d">Aggiungi una riga con il link al nuovo calcolatore. Il <code>README.md</code> cresce <em>insieme</em> al corso, lezione dopo lezione.</div>
+    </div>
+    <div class="gh-step">
+      <div class="gs-n">Step · 04</div>
+      <div class="gs-t">Condividi l'URL</div>
+      <div class="gs-d">Dopo ~30 secondi: <code>username.github.io/aero-python/reynolds_calc.html</code>. Mandalo ai compagni, mettilo nel diario di bordo.</div>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:48px">
+    <div class="cl-label">Il portfolio cresce, la fiducia anche</div>
+    <div class="cl-text">
+      Al termine del corso, ogni studente avrà un <strong>repository GitHub</strong> con dieci calcolatori aeronautici online — ISA, Reynolds, regimi di volo, polari, prestazioni in salita. Materiale linkabile in un CV, mostrabile a un colloquio, condivisibile con studenti di altre scuole. <em>Programmare per essere visti, validare per essere creduti.</em>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING -->
+<section class="closing" id="closing">
+  <div class="num" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:18px">§ 12 · Oltre la seconda lezione</div>
+  <h2>Le unità sono<br>la <em>grammatica</em><br>della <span class="glow">fisica</span>.</h2>
+
+  <div class="next">
+    <h3>Cosa faremo nella Lezione 03</h3>
+    <ul>
+      <li>Strutture di controllo: <code>if</code> / <code>elif</code> / <code>else</code>.</li>
+      <li>Classificazione automatica del regime di volo dal numero di Mach: subsonico, transonico, supersonico, ipersonico.</li>
+      <li>Operatori di confronto (<code>&lt;</code>, <code>&lt;=</code>, <code>==</code>, <code>!=</code>) e booleani (<code>and</code>, <code>or</code>, <code>not</code>).</li>
+      <li>Validazione automatica degli input · gestione degli errori utente.</li>
+    </ul>
+  </div>
+
+  <div class="motto">
+    Le unità sono la <span class="a">grammatica</span> della fisica:<br>
+    se sbagli quella, non c'è <span class="b">formula</span> che ti salvi.
+  </div>
+
+  <div class="signature">
+    <div>ITT INDIRIZZO AERONAUTICO · COSTRUZIONI AERONAUTICHE</div>
+    <div class="right">PROF. ING. B. RAUCCI · LEZIONE 02 · A.S. 2025/26</div>
+  </div>
+</section>
+
+<!-- LIBRARIES -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+<script>
+/* ============================================================
+   1) LENIS — smooth scroll
+   ============================================================ */
+const lenis = new Lenis({
+  duration:1.35,
+  easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),
+  smoothWheel:true,
+  smoothTouch:false,
+});
+function raf(time){
+  lenis.raf(time);
+  requestAnimationFrame(raf);
+}
+requestAnimationFrame(raf);
+
+gsap.registerPlugin(ScrollTrigger);
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add(time => lenis.raf(time*1000));
+gsap.ticker.lagSmoothing(0);
+
+/* ============================================================
+   2) THREE.JS — painted texture · atmospheric drift
+   ============================================================ */
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({canvas,antialias:false,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  const mouse = new THREE.Vector2(0.5,0.5);
+  const targetMouse = new THREE.Vector2(0.5,0.5);
+
+  const uniforms = {
+    uTime:{value:0},
+    uMouse:{value:mouse},
+    uResolution:{value:new THREE.Vector2(window.innerWidth,window.innerHeight)},
+    uScroll:{value:0},
+  };
+
+  const vertexShader = `void main(){ gl_Position = vec4(position,1.0); }`;
+
+  /* Atmospheric layered noise — drifts as cursor moves,
+     evokes high-altitude stratification + flow lines */
+  const fragmentShader = `
+    precision highp float;
+    uniform float uTime;
+    uniform vec2  uMouse;
+    uniform vec2  uResolution;
+    uniform float uScroll;
+
+    float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+    float noise(vec2 p){
+      vec2 i=floor(p); vec2 f=fract(p);
+      float a=hash(i);
+      float b=hash(i+vec2(1.0,0.0));
+      float c=hash(i+vec2(0.0,1.0));
+      float d=hash(i+vec2(1.0,1.0));
+      vec2 u=f*f*(3.0-2.0*f);
+      return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+    }
+    float fbm(vec2 p){
+      float v=0.0; float a=0.5;
+      for(int i=0;i<5;i++){
+        v += a*noise(p);
+        p = p*2.05; a*=0.5;
+      }
+      return v;
+    }
+
+    void main(){
+      vec2 uv = gl_FragCoord.xy / uResolution.xy;
+      vec2 p  = uv;
+      p.x *= uResolution.x/uResolution.y;
+
+      vec2 m = uMouse;
+      m.x *= uResolution.x/uResolution.y;
+      vec2 toM = m - p;
+      float dM = length(toM);
+
+      float t = uTime*0.06;
+
+      /* horizontal "atmospheric layers" — stratification of T(h) */
+      float layers = sin(p.y*8.0 + fbm(p*1.6 + t)*2.2 + uScroll*3.0) * 0.5 + 0.5;
+      layers = pow(layers, 1.4);
+
+      /* domain warp */
+      vec2 q;
+      q.x = fbm(p*1.3 + vec2(0.0,t));
+      q.y = fbm(p*1.3 + vec2(5.2,-t*0.9));
+
+      vec2 r;
+      r.x = fbm(p*1.7 + 3.6*q + vec2(1.7,9.2) + t*0.6);
+      r.y = fbm(p*1.7 + 3.6*q + vec2(8.3,2.8) - t*0.4);
+
+      float n = fbm(p*2.0 + 2.8*r);
+
+      /* cursor pulls the texture */
+      float warp = smoothstep(0.0, 0.65, 1.0 - dM*0.85);
+      n += warp*0.16*sin(uTime*0.5 + dM*7.0);
+      n = mix(n, layers, 0.22);
+
+      /* palette: deep teal-greens with gold accents at warp peaks */
+      vec3 c1 = vec3(0.014, 0.034, 0.035);  /* near-black */
+      vec3 c2 = vec3(0.02,  0.10,  0.10);   /* deep petrol */
+      vec3 c3 = vec3(0.05,  0.34,  0.30);   /* teal */
+      vec3 c4 = vec3(0.97,  0.78,  0.45);   /* gold */
+
+      vec3 col = mix(c1, c2, smoothstep(0.0,0.55,n));
+      col      = mix(col, c3, smoothstep(0.55,0.85,n));
+      col      = mix(col, c4*0.55, smoothstep(0.85,1.08,n)*warp);
+
+      /* cursor glow */
+      vec3 glow = vec3(0.42,0.94,0.85) * pow(smoothstep(0.42,0.0,dM), 2.4) * 0.20;
+      col += glow;
+
+      /* grain */
+      float g = (hash(uv*uResolution.xy + uTime) - 0.5) * 0.045;
+      col += g;
+
+      /* vignette */
+      float v = 1.0 - smoothstep(0.65,1.15,length(uv - 0.5));
+      col *= mix(0.6, 1.0, v);
+
+      /* scroll tint: shifts from teal-dominant to gold-warmer */
+      col = mix(col, col * vec3(1.05, 0.97, 0.88), uScroll*0.35);
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({vertexShader, fragmentShader, uniforms});
+  const geo = new THREE.PlaneGeometry(2,2);
+  scene.add(new THREE.Mesh(geo,material));
+
+  window.addEventListener('mousemove',e=>{
+    targetMouse.x = e.clientX / window.innerWidth;
+    targetMouse.y = 1 - e.clientY / window.innerHeight;
+  });
+  window.addEventListener('touchmove',e=>{
+    if(e.touches[0]){
+      targetMouse.x = e.touches[0].clientX / window.innerWidth;
+      targetMouse.y = 1 - e.touches[0].clientY / window.innerHeight;
+    }
+  },{passive:true});
+
+  window.addEventListener('resize',()=>{
+    renderer.setSize(window.innerWidth,window.innerHeight);
+    uniforms.uResolution.value.set(window.innerWidth,window.innerHeight);
+  });
+
+  let scrollNorm = 0;
+  lenis.on('scroll', ({scroll, limit}) => {
+    scrollNorm = limit > 0 ? scroll/limit : 0;
+  });
+
+  const clock = new THREE.Clock();
+  function render(){
+    mouse.x += (targetMouse.x - mouse.x) * 0.06;
+    mouse.y += (targetMouse.y - mouse.y) * 0.06;
+    uniforms.uTime.value = clock.getElapsedTime();
+    uniforms.uScroll.value += (scrollNorm - uniforms.uScroll.value) * 0.05;
+    renderer.render(scene,camera);
+    requestAnimationFrame(render);
+  }
+  render();
+})();
+
+/* ============================================================
+   3) KATEX
+   ============================================================ */
+function renderKatex(){
+  document.querySelectorAll('[data-formula]').forEach(el=>{
+    if(el.dataset.rendered) return;
+    try{
+      katex.render(el.dataset.formula, el, {displayMode:true, throwOnError:false});
+      el.dataset.rendered = "true";
+    }catch(e){console.warn(e)}
+  });
+}
+window.addEventListener('load',()=>{
+  const tryRender = () => {
+    if(window.katex){ renderKatex(); }
+    else setTimeout(tryRender, 60);
+  };
+  tryRender();
+});
+
+/* ============================================================
+   4) GSAP ScrollTrigger — cinematic reveals
+   ============================================================ */
+window.addEventListener('load', () => {
+  /* HERO */
+  gsap.from(".hero .eyebrow",{opacity:0,y:20,duration:1.2,delay:0.2,ease:"power3.out"});
+  gsap.from(".hero h1",{opacity:0,y:60,duration:1.4,delay:0.35,ease:"power4.out"});
+  gsap.from(".hero h1 .stamp",{opacity:0,letterSpacing:"0.3em",duration:1.6,delay:0.9,ease:"power3.out"});
+  gsap.from(".hero .sub",{opacity:0,y:24,duration:1.2,delay:0.7,ease:"power3.out"});
+  gsap.from(".hero .meta > div",{opacity:0,y:20,duration:1,delay:1.0,stagger:0.12,ease:"power3.out"});
+
+  /* Section headers */
+  gsap.utils.toArray('.section-head').forEach(head => {
+    const tl = gsap.timeline({
+      scrollTrigger:{ trigger:head, start:"top 78%", toggleActions:"play none none reverse" }
+    });
+    tl.from(head.querySelector('.num'),{opacity:0,y:14,duration:0.7,ease:"power3.out"})
+      .from(head.querySelector('h2'),{opacity:0,y:40,duration:1,ease:"power3.out"},"-=0.4")
+      .from(head.querySelector('.lead'),{opacity:0,y:24,duration:0.9,ease:"power3.out"},"-=0.5");
+  });
+
+  /* Pact */
+  gsap.from('.pact .col',{
+    opacity:0, y:36, duration:0.9, stagger:0.15, ease:"power3.out",
+    scrollTrigger:{trigger:'.pact',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.golden',{
+    opacity:0, x:-30, duration:1, ease:"power3.out",
+    scrollTrigger:{trigger:'.golden',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Planner — NON usato in L02 */
+
+  /* Timelines */
+  gsap.utils.toArray('.timeline').forEach(tl => {
+    gsap.from(tl.querySelectorAll('.tl-step'),{
+      opacity:0, y:36, duration:0.8, stagger:0.12, ease:"power3.out",
+      scrollTrigger:{trigger:tl,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Prompts */
+  gsap.from('.prompt-card',{
+    opacity:0, y:36, duration:0.9, stagger:0.18, ease:"power3.out",
+    scrollTrigger:{trigger:'.prompts',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+
+  /* Cycle — NON usato in L02 */
+
+  /* Code stages */
+  gsap.utils.toArray('.code-stage').forEach(cs => {
+    gsap.from(cs,{
+      opacity:0, y:30, duration:1, ease:"power3.out",
+      scrollTrigger:{trigger:cs,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+  gsap.utils.toArray('.code-notes').forEach(cn => {
+    gsap.from(cn.querySelectorAll('.cn'),{
+      opacity:0, y:24, duration:0.7, stagger:0.1, ease:"power3.out",
+      scrollTrigger:{trigger:cn,start:"top 85%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* ISA */
+  gsap.from('.isa-formulas, .isa-const',{
+    opacity:0, y:30, duration:0.9, stagger:0.2, ease:"power3.out",
+    scrollTrigger:{trigger:'.isa-box',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.isa-formula',{
+    opacity:0, x:-20, duration:0.7, stagger:0.15, ease:"power3.out",
+    scrollTrigger:{trigger:'.isa-formulas',start:"top 80%",toggleActions:"play none none reverse"}
+  });
+
+  /* Validation */
+  gsap.from('.val-table tbody tr',{
+    opacity:0, x:-20, duration:0.6, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.val-table',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  /* val-test — NON usato in L02 */
+  gsap.from('.ex-card',{
+    opacity:0, y:30, duration:0.8, stagger:0.15, ease:"power3.out",
+    scrollTrigger:{trigger:'.exercises',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Web · Python → Web */
+  /* bridge-side / bridge-arrow — RIMOSSI dalla L02 (niente bridge Python→Web) */
+  gsap.from('.translate-prompt',{
+    opacity:0, y:36, duration:1, ease:"power3.out",
+    scrollTrigger:{trigger:'.translate-prompt',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.demo-wrap',{
+    opacity:0, y:40, duration:1.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.demo-wrap',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.gh-step',{
+    opacity:0, y:30, duration:0.7, stagger:0.12, ease:"power3.out",
+    scrollTrigger:{trigger:'.gh-steps',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.utils.toArray('.callout').forEach(c => {
+    gsap.from(c,{
+      opacity:0, x:-24, duration:0.9, ease:"power3.out",
+      scrollTrigger:{trigger:c,start:"top 88%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Closing */
+  gsap.from('.closing h2',{
+    opacity:0, y:40, duration:1.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.closing',start:"top 78%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.closing .next',{
+    opacity:0, y:30, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.closing .next',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.motto',{
+    opacity:0, scale:0.95, duration:1.2, ease:"power3.out",
+    scrollTrigger:{trigger:'.motto',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.signature',{
+    opacity:0, y:24, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.signature',start:"top 92%",toggleActions:"play none none reverse"}
+  });
+
+  /* Background fades */
+  gsap.to('body',{
+    backgroundColor:"#080f10",
+    scrollTrigger:{trigger:document.body,start:"top top",end:"bottom bottom",scrub:true}
+  });
+
+  /* Rail + HUD */
+  const sections = [
+    {id:"hero",        label:"00 · INCIPIT"},
+    {id:"recap",       label:"01 · RECAP"},
+    {id:"mars",        label:"02 · MARS ORBITER"},
+    {id:"binding",     label:"03 · BINDING"},
+    {id:"naming",      label:"04 · NOMI"},
+    {id:"types",       label:"05 · TIPI"},
+    {id:"floats",      label:"06 · FLOAT"},
+    {id:"ops",         label:"07 · OPERATORI"},
+    {id:"convert",     label:"08 · CONVERSIONI"},
+    {id:"script",      label:"09 · LO SCRIPT"},
+    {id:"dimensional", label:"10 · DIMENSIONI"},
+    {id:"web",         label:"11 · REYNOLDS WEB"},
+    {id:"closing",     label:"12 · OLTRE"},
+  ];
+  const railNodes = document.querySelectorAll('.rail .node');
+  const hudSec = document.getElementById('hud-section');
+  const hudPrg = document.getElementById('hud-progress');
+
+  sections.forEach((s)=>{
+    ScrollTrigger.create({
+      trigger:`#${s.id}`,
+      start:"top 50%",
+      end:"bottom 50%",
+      onToggle:self=>{
+        if(self.isActive){
+          railNodes.forEach(n=>n.classList.toggle('active', n.dataset.target===s.id));
+          hudSec.textContent = "SEC · " + s.label;
+        }
+      }
+    });
+  });
+
+  railNodes.forEach(n=>{
+    n.addEventListener('click',()=>{
+      const t = document.getElementById(n.dataset.target);
+      if(t) lenis.scrollTo(t, {offset:-60, duration:1.4});
+    });
+  });
+
+  lenis.on('scroll', ({progress}) => {
+    hudPrg.textContent = "PRG · " + Math.round(progress*100) + "%";
+  });
+
+  setTimeout(()=>ScrollTrigger.refresh(), 600);
+});
+</script>
+
+</body>
+</html>
