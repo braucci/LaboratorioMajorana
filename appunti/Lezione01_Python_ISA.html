@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lezione 01 · Python per Costruzioni Aeronautiche</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070d0e;
+  --bg-1:#0a1417;
+  --ink:#eef4f1;
+  --ink-dim:#9bb1ad;
+  --teal:#6df0d2;
+  --teal-deep:#0eaf95;
+  --gold:#f7c873;
+  --gold-deep:#d49a37;
+  --rose:#ff8a8a;
+  --line:rgba(109,240,210,0.18);
+  --line-2:rgba(247,200,115,0.22);
+  --grid:rgba(109,240,210,0.06);
+  --panel:rgba(7,13,14,0.7);
+  --panel-strong:rgba(5,10,11,0.88);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg-0);color:var(--ink);font-family:"Fraunces",serif;overflow-x:hidden}
+body{min-height:100vh;line-height:1.55}
+
+#bg-canvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+
+.grid-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+  -webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+}
+.vignette{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,0.7) 100%)}
+.scanline{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,0.012) 3px,rgba(255,255,255,0.012) 4px);
+  mix-blend-mode:overlay;
+}
+
+.hud{
+  position:fixed;top:0;left:0;right:0;z-index:50;padding:14px 28px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.16em;
+  color:var(--teal);background:linear-gradient(to bottom,rgba(5,10,11,0.85),transparent);
+  border-bottom:1px solid rgba(109,240,210,0.1);text-transform:uppercase;
+}
+.hud .left{display:flex;gap:24px;align-items:center}
+.hud .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);animation:pulse 2s ease-in-out infinite}
+.hud .right{display:flex;gap:24px;color:var(--ink-dim)}
+@keyframes pulse{50%{opacity:0.35}}
+
+.rail{
+  position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:40;
+  display:flex;flex-direction:column;gap:14px;
+  font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.14em;
+}
+.rail .node{display:flex;align-items:center;gap:10px;color:var(--ink-dim);transition:color 0.4s ease;cursor:pointer}
+.rail .node .mark{width:10px;height:10px;border:1px solid var(--ink-dim);transform:rotate(45deg);transition:all 0.4s ease}
+.rail .node.active{color:var(--teal)}
+.rail .node.active .mark{background:var(--teal);border-color:var(--teal);box-shadow:0 0 16px var(--teal)}
+
+section{position:relative;z-index:10;min-height:100vh;padding:120px 8vw;display:flex;flex-direction:column;justify-content:center}
+
+.hero{min-height:100vh;justify-content:center}
+.hero .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.hero h1{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(54px,9vw,140px);line-height:0.92;letter-spacing:-0.02em;margin-bottom:26px;color:var(--ink)}
+.hero h1 em{font-style:italic;font-weight:400;color:var(--teal)}
+.hero h1 .stamp{font-style:normal;font-weight:500;display:block;font-family:"Space Grotesk",sans-serif;font-size:clamp(20px,3.4vw,42px);letter-spacing:0.05em;color:var(--gold);margin-top:14px}
+.hero .sub{font-family:"Space Grotesk",sans-serif;font-size:clamp(15px,1.4vw,18px);letter-spacing:0.02em;color:var(--ink-dim);max-width:680px;line-height:1.85}
+.hero .meta{margin-top:48px;display:flex;gap:48px;flex-wrap:wrap;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.16em;color:var(--ink-dim)}
+.hero .meta b{color:var(--teal);font-weight:400;display:block;font-size:18px;margin-top:4px;letter-spacing:0.04em}
+
+.scroll-cue{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.3em;color:var(--teal);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px}
+.scroll-cue .line{width:1px;height:48px;background:linear-gradient(to bottom,var(--teal),transparent);animation:drop 2s ease-in-out infinite}
+@keyframes drop{0%,100%{transform:scaleY(0.4);transform-origin:top}50%{transform:scaleY(1)}}
+
+.section-head{margin-bottom:64px}
+.section-head .num{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+.section-head h2{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(40px,6.5vw,92px);line-height:1;letter-spacing:-0.02em;color:var(--ink);max-width:1000px}
+.section-head h2 em{font-style:italic;color:var(--teal)}
+.section-head h2 .accent{color:var(--gold);font-style:italic}
+.section-head .lead{margin-top:24px;font-family:"Space Grotesk",sans-serif;font-size:clamp(16px,1.4vw,19px);color:var(--ink-dim);max-width:760px;line-height:1.8}
+
+/* ============== PATTO ============== */
+.pact{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);margin-top:32px}
+.pact .col{padding:38px 32px;border-right:1px solid var(--line)}
+.pact .col:last-child{border-right:none;background:linear-gradient(135deg,rgba(247,200,115,0.05),rgba(255,138,138,0.04))}
+.pact .col h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:18px}
+.pact .col:last-child h3{color:var(--gold)}
+.pact .col ul{list-style:none}
+.pact .col li{padding:10px 0 10px 22px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;line-height:1.7;color:var(--ink-dim);border-bottom:1px dashed rgba(109,240,210,0.12)}
+.pact .col li:last-child{border-bottom:none}
+.pact .col li::before{content:"›";position:absolute;left:0;top:10px;color:var(--teal);font-weight:700}
+.pact .col:last-child li::before{color:var(--gold)}
+
+.golden{margin-top:56px;padding:40px 44px;background:linear-gradient(120deg,rgba(247,200,115,0.10),rgba(109,240,210,0.05));border:1px solid var(--line-2);border-left:3px solid var(--gold);position:relative}
+.golden .label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.3em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+.golden q{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(22px,3vw,38px);color:var(--ink);line-height:1.3}
+.golden q::before{content:"«";color:var(--gold);margin-right:4px}
+.golden q::after{content:"»";color:var(--gold);margin-left:4px}
+
+/* ============== PLANNER ============== */
+.planner{background:var(--panel-strong);backdrop-filter:blur(10px);border:1px solid var(--line);margin-top:24px}
+.planner .row{display:grid;grid-template-columns:80px 1.4fr 2fr;gap:24px;padding:18px 28px;border-bottom:1px solid rgba(109,240,210,0.08);align-items:center;font-family:"Space Grotesk",sans-serif;font-size:14px;transition:background 0.3s ease}
+.planner .row:hover{background:rgba(109,240,210,0.04)}
+.planner .row.head{background:rgba(109,240,210,0.06);font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:var(--teal)}
+.planner .row .nn{font-family:"JetBrains Mono",monospace;font-weight:700;color:var(--gold);font-size:15px}
+.planner .row.head .nn{color:var(--teal);font-weight:400;font-size:10px}
+.planner .row .topic{color:var(--ink);font-weight:500}
+.planner .row .app{color:var(--ink-dim);font-style:italic;font-family:"Fraunces",serif;font-size:15px}
+.planner .row.head .topic,.planner .row.head .app{font-style:normal;font-family:"JetBrains Mono",monospace;color:var(--teal);font-weight:400}
+.planner .row.current{background:linear-gradient(90deg,rgba(247,200,115,0.10),transparent);border-left:3px solid var(--gold)}
+
+/* ============== TIMELINE ============== */
+.timeline{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:24px}
+.tl-step{padding:26px 22px;background:var(--panel-strong);border:1px solid var(--line);border-right:none;position:relative;backdrop-filter:blur(10px)}
+.tl-step:last-child{border-right:1px solid var(--line)}
+.tl-step::after{content:"→";position:absolute;right:-9px;top:30px;z-index:2;width:18px;height:18px;background:var(--bg-0);display:flex;align-items:center;justify-content:center;color:var(--teal);font-family:"JetBrains Mono",monospace;font-size:18px;text-shadow:0 0 8px var(--teal)}
+.tl-step:last-child::after{display:none}
+.tl-step .ts-num{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
+.tl-step .ts-name{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin-bottom:10px;letter-spacing:0.01em}
+.tl-step .ts-time{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--teal);margin-bottom:14px;letter-spacing:0.12em}
+.tl-step .ts-desc{font-family:"Fraunces",serif;font-size:14px;color:var(--ink-dim);font-style:italic;line-height:1.6}
+
+/* ============== PROMPTS ============== */
+.prompts{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.prompt-card{padding:32px 28px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);position:relative}
+.prompt-card.bad{border-color:rgba(255,138,138,0.4);background:linear-gradient(135deg,rgba(255,138,138,0.08),var(--panel-strong) 60%)}
+.prompt-card.good{border-color:rgba(109,240,210,0.4);background:linear-gradient(135deg,rgba(109,240,210,0.08),var(--panel-strong) 60%)}
+.prompt-card .ptag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;margin-bottom:12px}
+.prompt-card.bad .ptag{color:var(--rose)}
+.prompt-card.good .ptag{color:var(--teal)}
+.prompt-card .pname{font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:22px;color:var(--ink);margin-bottom:18px}
+.prompt-card q{display:block;font-family:"Fraunces",serif;font-style:italic;font-size:17px;line-height:1.7;color:var(--ink);padding:18px 22px;background:rgba(0,0,0,0.3);border-left:2px solid currentColor}
+.prompt-card.bad q{color:var(--rose)}
+.prompt-card.good q{color:var(--teal)}
+.prompt-card q strong{font-weight:700;font-style:normal}
+
+.cycle{margin-top:64px;display:grid;grid-template-columns:repeat(6,1fr);gap:0}
+.cy-step{padding:22px 18px;text-align:center;background:var(--panel-strong);border:1px solid var(--line);border-right:none;position:relative}
+.cy-step:last-child{border-right:1px solid var(--line)}
+.cy-step .cy-n{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--gold);margin-bottom:10px;letter-spacing:0.12em}
+.cy-step .cy-l{font-family:"Space Grotesk",sans-serif;font-weight:500;font-size:13px;color:var(--ink);letter-spacing:0.02em}
+.cy-step.critical{background:linear-gradient(135deg,rgba(247,200,115,0.12),var(--panel-strong));border-color:var(--line-2)}
+.cy-step.critical .cy-l{color:var(--gold)}
+.cy-step::after{content:"→";position:absolute;right:-7px;top:50%;transform:translateY(-50%);z-index:2;width:14px;height:14px;background:var(--bg-0);display:flex;align-items:center;justify-content:center;color:var(--teal);font-family:"JetBrains Mono",monospace;font-size:14px}
+.cy-step:last-child::after{display:none}
+
+/* ============== CODE ============== */
+.code-stage{margin-top:24px;background:rgba(2,6,7,0.94);border:1px solid var(--line);position:relative;backdrop-filter:blur(8px);box-shadow:0 0 60px rgba(0,0,0,0.4),inset 0 0 0 1px rgba(109,240,210,0.06)}
+.code-stage::before,.code-stage::after{content:"";position:absolute;width:18px;height:18px;border-color:var(--teal);border-style:solid}
+.code-stage::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.code-stage::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+.code-head{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.18em;color:var(--teal);text-transform:uppercase}
+.code-head .dots{display:flex;gap:8px}
+.code-head .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.12)}
+.code-head .dots span:nth-child(1){background:#ff5454}
+.code-head .dots span:nth-child(2){background:var(--gold)}
+.code-head .dots span:nth-child(3){background:var(--teal)}
+.code-body{padding:28px 32px;font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.75;color:#d6e6e4;overflow-x:auto;white-space:pre}
+.code-body .ln{display:inline-block;width:30px;text-align:right;color:rgba(155,177,173,0.35);margin-right:18px;user-select:none}
+.code-body .kw{color:#ff8ad0;font-weight:500}
+.code-body .bi{color:#94d8ff}
+.code-body .st{color:#f7c873}
+.code-body .nm{color:#9fffe5}
+.code-body .cm{color:#7a8e8a;font-style:italic}
+.code-body .fn{color:#6df0d2}
+.code-body .op{color:#cfb0ff}
+
+.code-notes{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-top:none;background:rgba(7,13,14,0.85)}
+.code-notes .cn{padding:20px 22px;border-right:1px solid var(--line)}
+.code-notes .cn:last-child{border-right:none}
+.code-notes .cn .cn-tag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.code-notes .cn .cn-title{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:14px;color:var(--ink);margin-bottom:8px}
+.code-notes .cn .cn-text{font-family:"Fraunces",serif;font-style:italic;font-size:13.5px;color:var(--ink-dim);line-height:1.6}
+
+/* ============== ISA ============== */
+.isa-box{margin-top:24px;display:grid;grid-template-columns:1.1fr 1fr;gap:24px}
+.isa-formulas{padding:38px 36px;background:var(--panel-strong);border:1px solid var(--line);border-left:2px solid var(--teal);backdrop-filter:blur(10px);position:relative}
+.isa-formulas::before{content:"ISA · ICAO 1964";position:absolute;top:14px;right:18px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.22em;color:var(--teal);opacity:0.55;text-transform:uppercase}
+.isa-formulas h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.isa-formulas .desc{font-family:"Fraunces",serif;font-style:italic;color:var(--ink-dim);font-size:15px;margin-bottom:18px;line-height:1.6}
+.isa-formula{padding:18px;background:rgba(0,0,0,0.4);border:1px solid rgba(109,240,210,0.28);border-radius:2px;margin-bottom:14px}
+.isa-formula .katex-display{margin:0}
+.isa-formula .katex{font-size:1.3em !important;color:#fff !important;text-shadow:0 0 10px rgba(109,240,210,0.3)}
+.isa-formula .katex *{color:#fff !important}
+.isa-formula .katex .frac-line{border-bottom-color:var(--teal) !important;border-bottom-width:0.06em !important}
+.isa-formula .katex .mord.mathnormal,.isa-formula .katex .mathit{color:var(--gold) !important}
+.isa-formula .katex .mrel,.isa-formula .katex .mbin{color:var(--teal) !important}
+
+.isa-const{padding:38px 36px;background:var(--panel-strong);border:1px solid var(--line);border-left:2px solid var(--gold);backdrop-filter:blur(10px)}
+.isa-const h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.isa-const dl{display:grid;grid-template-columns:auto 1fr;gap:14px 18px}
+.isa-const dt{font-family:"Fraunces",serif;font-style:italic;color:var(--teal);font-size:17px}
+.isa-const dd{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--ink);letter-spacing:0.02em}
+
+/* ============== VALIDATION ============== */
+.val-table{margin-top:24px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);overflow:hidden}
+.val-table table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace}
+.val-table th{padding:16px 20px;font-size:10px;letter-spacing:0.22em;color:var(--teal);text-transform:uppercase;font-weight:400;text-align:right;border-bottom:1px solid var(--line);background:rgba(109,240,210,0.04)}
+.val-table th:first-child{text-align:left}
+.val-table td{padding:14px 20px;font-size:14px;color:var(--ink);text-align:right;border-bottom:1px solid rgba(109,240,210,0.08)}
+.val-table td:first-child{text-align:left;color:var(--gold);font-weight:700}
+.val-table tr:last-child td{border-bottom:none}
+.val-table tr.highlight td{background:rgba(247,200,115,0.06)}
+
+.val-test{margin-top:32px;padding:32px 36px;background:linear-gradient(120deg,rgba(109,240,210,0.06),rgba(247,200,115,0.04));border:1px solid var(--line);border-left:3px solid var(--teal)}
+.val-test h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:16px}
+.val-test ol{padding-left:0;list-style:none;counter-reset:tcount}
+.val-test li{counter-increment:tcount;padding:10px 0 10px 38px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--ink);line-height:1.7}
+.val-test li::before{content:counter(tcount,decimal-leading-zero);position:absolute;left:0;top:11px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--gold);letter-spacing:0.08em}
+
+/* ============== EXERCISES ============== */
+.exercises{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:24px}
+.ex-card{padding:32px 28px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);position:relative}
+.ex-card .ex-n{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
+.ex-card .ex-t{font-family:"Fraunces",serif;font-weight:500;font-size:22px;color:var(--ink);margin-bottom:14px;line-height:1.2}
+.ex-card .ex-d{font-family:"Space Grotesk",sans-serif;font-size:14px;color:var(--ink-dim);line-height:1.7}
+.ex-card .ex-d code{font-family:"JetBrains Mono",monospace;font-size:12px;background:rgba(109,240,210,0.1);color:var(--teal);padding:1px 6px;border-radius:2px}
+
+/* ============== PYTHON → WEB ============== */
+.bridge{
+  margin-top:24px;
+  display:grid;grid-template-columns:1fr auto 1fr;gap:24px;
+  align-items:stretch;
+}
+.bridge-side{
+  padding:28px 26px;
+  background:var(--panel-strong);
+  border:1px solid var(--line);
+  backdrop-filter:blur(10px);
+  text-align:center;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.bridge-side .bs-stack{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.22em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:14px;
+}
+.bridge-side .bs-name{
+  font-family:"Fraunces",serif;font-weight:500;font-style:italic;
+  font-size:26px;color:var(--ink);margin-bottom:10px;
+}
+.bridge-side .bs-desc{
+  font-family:"Space Grotesk",sans-serif;font-size:14px;
+  color:var(--ink-dim);line-height:1.6;
+}
+.bridge-side.py{border-left:2px solid var(--teal)}
+.bridge-side.web{border-left:2px solid var(--gold)}
+
+.bridge-arrow{
+  display:flex;align-items:center;justify-content:center;
+  font-family:"JetBrains Mono",monospace;
+  font-size:32px;color:var(--teal);
+  text-shadow:0 0 16px rgba(109,240,210,0.4);
+  padding:0 8px;
+}
+.bridge-arrow .label{
+  display:block;font-size:9px;letter-spacing:0.22em;
+  color:var(--gold);text-transform:uppercase;margin-top:6px;
+  text-shadow:none;
+}
+
+.translate-prompt{
+  margin-top:32px;
+  padding:36px 38px;
+  background:linear-gradient(135deg,rgba(109,240,210,0.08),var(--panel-strong) 60%);
+  border:1px solid rgba(109,240,210,0.4);
+  position:relative;
+}
+.translate-prompt .ptag{
+  font-family:"JetBrains Mono",monospace;
+  font-size:10px;letter-spacing:0.28em;color:var(--teal);
+  text-transform:uppercase;margin-bottom:14px;
+}
+.translate-prompt .pname{
+  font-family:"Fraunces",serif;font-style:italic;font-weight:500;
+  font-size:22px;color:var(--ink);margin-bottom:20px;
+}
+.translate-prompt q{
+  display:block;
+  font-family:"Fraunces",serif;font-style:italic;
+  font-size:17px;line-height:1.75;color:var(--ink);
+  padding:22px 26px;
+  background:rgba(0,0,0,0.42);
+  border-left:3px solid var(--teal);
+}
+.translate-prompt q strong{font-weight:700;font-style:normal;color:var(--gold)}
+.translate-prompt q em{color:var(--teal);font-style:italic}
+
+.gh-steps{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+  margin-top:24px;
+}
+.gh-step{
+  padding:26px 22px;
+  background:var(--panel-strong);
+  border:1px solid var(--line);
+  border-right:none;
+  position:relative;
+  backdrop-filter:blur(10px);
+}
+.gh-step:last-child{border-right:1px solid var(--line)}
+.gh-step::after{
+  content:"→";position:absolute;right:-9px;top:30px;z-index:2;
+  width:18px;height:18px;background:var(--bg-0);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--gold);font-family:"JetBrains Mono",monospace;
+  font-size:18px;text-shadow:0 0 8px var(--gold);
+}
+.gh-step:last-child::after{display:none}
+.gh-step .gs-n{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.22em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.gh-step .gs-t{
+  font-family:"Space Grotesk",sans-serif;font-weight:700;
+  font-size:16px;color:var(--ink);margin-bottom:10px;
+}
+.gh-step .gs-d{
+  font-family:"Fraunces",serif;font-style:italic;
+  font-size:14px;color:var(--ink-dim);line-height:1.6;
+}
+.gh-step .gs-d code{
+  font-family:"JetBrains Mono",monospace;font-size:12px;
+  background:rgba(109,240,210,0.1);color:var(--teal);
+  padding:1px 6px;border-radius:2px;font-style:normal;
+}
+
+.demo-wrap{
+  margin-top:32px;
+  background:var(--panel-strong);
+  border:1px solid var(--line);
+  backdrop-filter:blur(10px);
+  overflow:hidden;
+}
+.demo-head{
+  padding:14px 22px;
+  border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.18em;
+  color:var(--teal);text-transform:uppercase;
+  background:rgba(109,240,210,0.04);
+}
+.demo-head .url{
+  color:var(--ink-dim);font-size:10px;
+  background:rgba(0,0,0,0.35);
+  padding:4px 10px;border-radius:2px;
+}
+.demo-head .url span{color:var(--gold)}
+.demo-iframe{
+  width:100%;
+  height:740px;
+  border:none;
+  background:#0a1417;
+  display:block;
+}
+
+.callout{
+  margin-top:32px;
+  padding:28px 32px;
+  background:linear-gradient(120deg,rgba(247,200,115,0.10),rgba(109,240,210,0.04));
+  border:1px solid var(--line-2);
+  border-left:3px solid var(--gold);
+}
+.callout .cl-label{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:0.28em;color:var(--gold);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.callout .cl-text{
+  font-family:"Fraunces",serif;font-size:17px;
+  color:var(--ink);line-height:1.7;font-style:italic;
+}
+.callout .cl-text strong{color:var(--teal);font-style:normal;font-weight:700}
+
+/* ============== CLOSING ============== */
+.closing{padding:160px 8vw}
+.closing h2{font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:clamp(48px,7vw,108px);line-height:1.05;margin-bottom:32px;letter-spacing:-0.02em}
+.closing h2 em{font-style:italic;color:var(--teal)}
+.closing h2 .glow{color:var(--gold);text-shadow:0 0 30px rgba(247,200,115,0.4)}
+.closing .next{margin-top:48px;padding:36px 40px;background:var(--panel-strong);border:1px solid var(--line);border-left:3px solid var(--teal)}
+.closing .next h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:18px}
+.closing .next ul{list-style:none}
+.closing .next li{padding:10px 0 10px 22px;position:relative;font-family:"Fraunces",serif;font-size:18px;color:var(--ink);line-height:1.6;border-bottom:1px dashed rgba(109,240,210,0.12)}
+.closing .next li:last-child{border-bottom:none}
+.closing .next li::before{content:"→";position:absolute;left:0;color:var(--gold)}
+.closing .next li code{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px}
+
+.motto{margin-top:80px;text-align:center;font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:clamp(28px,4vw,56px);line-height:1.3;color:var(--ink);letter-spacing:-0.01em}
+.motto .a{color:var(--teal)}
+.motto .b{color:var(--gold)}
+
+.signature{margin-top:96px;padding-top:32px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.18em;color:var(--ink-dim);text-transform:uppercase}
+.signature .right{color:var(--gold)}
+
+@media (max-width:1100px){
+  .pact,.prompts,.isa-box{grid-template-columns:1fr}
+  .pact .col{border-right:none;border-bottom:1px solid var(--line)}
+  .pact .col:last-child{border-bottom:none}
+  .timeline,.cycle{grid-template-columns:1fr 1fr}
+  .tl-step,.cy-step{border-right:1px solid var(--line);border-bottom:none}
+  .tl-step::after,.cy-step::after{display:none}
+  .exercises{grid-template-columns:1fr}
+  .bridge{grid-template-columns:1fr}
+  .bridge-arrow{transform:rotate(90deg);padding:8px 0}
+  .gh-steps{grid-template-columns:1fr 1fr}
+  .gh-step{border-right:1px solid var(--line)}
+  .gh-step::after{display:none}
+}
+@media (max-width:700px){
+  .timeline,.cycle{grid-template-columns:1fr}
+  .planner .row{grid-template-columns:60px 1fr;gap:14px}
+  .planner .row .app{grid-column:2}
+  .planner .row.head{display:none}
+  .code-notes{grid-template-columns:1fr}
+  .code-notes .cn{border-right:none;border-bottom:1px solid var(--line)}
+  .code-notes .cn:last-child{border-bottom:none}
+  section{padding:80px 6vw}
+  .rail{display:none}
+  .hud{font-size:9px;padding:10px 16px}
+  .hud .right{display:none}
+  .isa-formula .katex{font-size:1.05em !important}
+  .gh-steps{grid-template-columns:1fr}
+  .demo-iframe{height:600px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+<div class="vignette"></div>
+<div class="scanline"></div>
+
+<div class="hud">
+  <div class="left">
+    <span class="dot"></span>
+    <span>SYS · PYTHON FOR AERO · L01</span>
+    <span style="color:var(--ink-dim)">ITT Aeronautico · a.s. 2025/26</span>
+  </div>
+  <div class="right">
+    <span id="hud-section">SEC · 00 · INTRO</span>
+    <span id="hud-progress">PRG · 0%</span>
+  </div>
+</div>
+
+<nav class="rail" id="rail">
+  <div class="node" data-target="hero"><span class="mark"></span><span>00 · INCIPIT</span></div>
+  <div class="node" data-target="why"><span class="mark"></span><span>01 · PERCHÉ</span></div>
+  <div class="node" data-target="pact"><span class="mark"></span><span>02 · IL PATTO</span></div>
+  <div class="node" data-target="planner"><span class="mark"></span><span>03 · PLANNER</span></div>
+  <div class="node" data-target="lesson"><span class="mark"></span><span>04 · LA LEZIONE</span></div>
+  <div class="node" data-target="ai"><span class="mark"></span><span>05 · DIALOGO IA</span></div>
+  <div class="node" data-target="anatomy"><span class="mark"></span><span>06 · ANATOMIA</span></div>
+  <div class="node" data-target="isa"><span class="mark"></span><span>07 · ISA</span></div>
+  <div class="node" data-target="script"><span class="mark"></span><span>08 · LO SCRIPT</span></div>
+  <div class="node" data-target="validation"><span class="mark"></span><span>09 · VALIDAZIONE</span></div>
+  <div class="node" data-target="web"><span class="mark"></span><span>10 · PYTHON → WEB</span></div>
+  <div class="node" data-target="closing"><span class="mark"></span><span>11 · OLTRE</span></div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="eyebrow">Lezione 01 · Python per Costruzioni Aeronautiche</div>
+  <h1>
+    Programmare con l'<em>aiuto</em><br>
+    dell'IA: <em>capire</em><br>
+    prima di copiare.
+    <span class="stamp">DEF · ISA · ICAO 1964 · TROPOSPHERE</span>
+  </h1>
+  <p class="sub">
+    Una prima lezione che vale come un patto: useremo l'Intelligenza Artificiale come un collega, non come un oracolo. Scriveremo, leggeremo, valideremo. Atterreremo con il nostro primo script — l'Atmosfera Tipo.
+  </p>
+  <div class="meta">
+    <div>STRUMENTI<br><b>Python 3 · Thonny · VS Code</b></div>
+    <div>LIBRERIE<br><b>math · numpy · matplotlib · pandas</b></div>
+    <div>OBIETTIVO OGGI<br><b>Saper leggere uno script</b></div>
+  </div>
+  <div class="scroll-cue">
+    <div class="line"></div>
+    SCROLL · ATTRAVERSARE LA LEZIONE
+  </div>
+</section>
+
+<!-- WHY -->
+<section id="why">
+  <div class="section-head">
+    <div class="num">§ 01 · Perché Python, perché adesso</div>
+    <h2>Saper leggere uno script<br>è <em>trasversale</em> quanto saper<br>leggere un <span class="accent">disegno tecnico</span>.</h2>
+    <p class="lead">
+      CFD, prove in galleria, campagne di volo, post-processing strutturale: tutto passa da uno script. Python è oggi lo standard <em>de facto</em> dell'industria aerospaziale per pre/post-processing, analisi dati e automazione del calcolo.
+    </p>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-step">
+      <div class="ts-num">Atout · 01</div>
+      <div class="ts-name">Interpretato</div>
+      <div class="ts-time">no-compile · feedback &lt; 1s</div>
+      <div class="ts-desc">Ciclo prova-errore rapidissimo. Si scrive, si lancia, si vede il risultato.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Atout · 02</div>
+      <div class="ts-name">Sintassi naturale</div>
+      <div class="ts-time">close-to-math</div>
+      <div class="ts-desc">Vicino alla notazione matematica: una formula si traduce quasi alla lettera.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Atout · 03</div>
+      <div class="ts-name">Ecosistema</div>
+      <div class="ts-time">numpy · scipy · matplotlib</div>
+      <div class="ts-desc">Librerie scientifiche mature, gratuite, documentate. Tutto già pronto per il calcolo numerico.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Atout · 04</div>
+      <div class="ts-name">Standard industriale</div>
+      <div class="ts-time">OpenFOAM · SU2 · Airbus</div>
+      <div class="ts-desc">Adottato da università, centri di ricerca e aziende per scripting e analisi dati di volo.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Atout · 05</div>
+      <div class="ts-name">Comunità</div>
+      <div class="ts-time">Stack Overflow · GitHub</div>
+      <div class="ts-desc">Milioni di sviluppatori: ogni dubbio ha già una risposta scritta da qualcuno.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PACT -->
+<section id="pact">
+  <div class="section-head">
+    <div class="num">§ 02 · Il patto del corso</div>
+    <h2>L'IA è un <em>collega</em>,<br>non un <span class="accent">oracolo</span>.</h2>
+    <p class="lead">
+      L'I.A. scrive codice molto velocemente — ma può sbagliare. Il nostro compito è leggerlo, validarlo con un caso di prova, correggerlo. Esattamente come un calcolo FEM: non si firma se non si è capaci di stimarne l'ordine di grandezza a mano.
+    </p>
+  </div>
+
+  <div class="pact">
+    <div class="col">
+      <h3>L'IA come collega — cosa fa</h3>
+      <ul>
+        <li>Scrive codice in pochi secondi, a partire da una specifica.</li>
+        <li>Suggerisce librerie, sintassi, pattern di scrittura.</li>
+        <li>Spiega errori, propone alternative, refattorizza.</li>
+        <li>Accelera il lavoro routinario, libera tempo per il pensiero.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>L'IA come oracolo — cosa non è</h3>
+      <ul>
+        <li>Non garantisce la correttezza fisica del risultato.</li>
+        <li>Può confondere segni, unità di misura, riferimenti normativi.</li>
+        <li>Può inventare funzioni che non esistono ("hallucinations").</li>
+        <li>Non sa quale sia il <em>tuo</em> problema reale: glielo devi dire tu.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="golden">
+    <div class="label">Regola d'oro</div>
+    <q>Un codice che non si capisce è un codice che non si può difendere.</q>
+  </div>
+</section>
+
+<!-- PLANNER -->
+<section id="planner">
+  <div class="section-head">
+    <div class="num">§ 03 · Planner del corso</div>
+    <h2>Dieci lezioni, un solo<br><em>filo conduttore</em>: <span class="accent">l'aria</span>,<br>il volo, il calcolo.</h2>
+    <p class="lead">
+      Ogni concetto Python — variabili, condizioni, cicli, funzioni, grafici — è agganciato a un problema aeronautico reale. Si impara facendo: ISA, conversioni, regimi di volo, polari, campagne di prova.
+    </p>
+  </div>
+
+  <div class="planner">
+    <div class="row head"><div class="nn">N°</div><div class="topic">Argomento</div><div class="app">Applicazione aeronautica</div></div>
+    <div class="row current"><div class="nn">01</div><div class="topic">Introduzione, ambiente, primo script</div><div class="app">Atmosfera tipo ISA</div></div>
+    <div class="row"><div class="nn">02</div><div class="topic">Variabili, tipi, operatori</div><div class="app">Conversioni di unità (nodi, ft, m, Pa)</div></div>
+    <div class="row"><div class="nn">03</div><div class="topic">Condizioni if / elif / else</div><div class="app">Classificazione regime di volo (Mach)</div></div>
+    <div class="row"><div class="nn">04</div><div class="topic">Cicli for e while</div><div class="app">Tabella ISA su intervallo di quota</div></div>
+    <div class="row"><div class="nn">05</div><div class="topic">Funzioni e moduli</div><div class="app">Libreria atmosfera.py</div></div>
+    <div class="row"><div class="nn">06</div><div class="topic">Liste, tuple, dizionari</div><div class="app">Dati di una flotta, profilo di missione</div></div>
+    <div class="row"><div class="nn">07</div><div class="topic">File CSV e numpy</div><div class="app">Lettura prove sperimentali in galleria</div></div>
+    <div class="row"><div class="nn">08</div><div class="topic">Grafici con matplotlib</div><div class="app">Polare del profilo NACA, C<sub>L</sub>–α</div></div>
+    <div class="row"><div class="nn">09</div><div class="topic">Mini-progetto guidato</div><div class="app">Stima di prestazioni in salita</div></div>
+    <div class="row"><div class="nn">10</div><div class="topic">Verifica finale</div><div class="app">Script da consegnare con relazione</div></div>
+  </div>
+</section>
+
+<!-- LESSON STRUCTURE -->
+<section id="lesson">
+  <div class="section-head">
+    <div class="num">§ 04 · Come è organizzata una lezione</div>
+    <h2>Inquadrare, costruire,<br><em>validare</em>: lo schema<br>che <span class="accent">non cambia mai</span>.</h2>
+    <p class="lead">
+      Ogni lezione segue una drammaturgia precisa. Si parte dal problema fisico, si introduce il concetto Python, si scrive lo script in laboratorio, lo si confronta con un valore noto, si consegna un esercizio per casa. Niente di lasciato al caso.
+    </p>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-step">
+      <div class="ts-num">Fase 01</div>
+      <div class="ts-name">Inquadramento</div>
+      <div class="ts-time">10 – 15 min</div>
+      <div class="ts-desc">Il problema aeronautico che vogliamo risolvere. Si discute fisica, ipotesi, ordini di grandezza.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 02</div>
+      <div class="ts-name">Concetto Python</div>
+      <div class="ts-time">15 – 20 min</div>
+      <div class="ts-desc">La nuova nozione di linguaggio (variabili, cicli, funzioni...) con esempi minimi al REPL.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 03</div>
+      <div class="ts-name">Laboratorio</div>
+      <div class="ts-time">30 – 40 min</div>
+      <div class="ts-desc">Si scrive lo script insieme. L'IA viene usata in modo controllato: noi guidiamo, lei propone.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 04</div>
+      <div class="ts-name">Validazione</div>
+      <div class="ts-time">10 min</div>
+      <div class="ts-desc">Confronto con un valore noto: tabella, formula a mano, ordine di grandezza. Solo allora si crede al risultato.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 05</div>
+      <div class="ts-name">Consolidamento</div>
+      <div class="ts-time">a casa</div>
+      <div class="ts-desc">Un esercizio guidato per consolidare. Si torna in classe con i dubbi, non con i risultati.</div>
+    </div>
+  </div>
+</section>
+
+<!-- AI DIALOG -->
+<section id="ai">
+  <div class="section-head">
+    <div class="num">§ 05 · Come si dialoga con un'IA</div>
+    <h2>Un buon prompt<br>è una buona <em>specifica</em><br>di <span class="accent">progetto</span>.</h2>
+    <p class="lead">
+      Cosa, dati, ipotesi, forma del risultato: come quando un committente chiede un calcolo strutturale, anche all'IA bisogna dire <em>tutto</em>. Più la specifica è precisa, più il codice è utile.
+    </p>
+  </div>
+
+  <div class="prompts">
+    <div class="prompt-card bad">
+      <div class="ptag">✗ Prompt cattivo</div>
+      <div class="pname">Vago, indifeso, irriproducibile</div>
+      <q>Fammi un programma sull'atmosfera.</q>
+      <p style="margin-top:18px;font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--ink-dim);line-height:1.6">
+        Cosa calcola? Su che modello? Con quali costanti? In quale forma? L'IA dovrà inventare tutto: difficilmente le scelte saranno le tue.
+      </p>
+    </div>
+    <div class="prompt-card good">
+      <div class="ptag">✓ Prompt buono</div>
+      <div class="pname">Cosa · Dati · Ipotesi · Forma</div>
+      <q>Scrivi uno script Python che, data una quota <strong>h</strong> in metri (0 ≤ h ≤ 11000), calcoli T, p, ρ secondo il <strong>modello ISA-ICAO in troposfera</strong>. Usa T₀ = 288,15 K, p₀ = 101325 Pa, λ = −0,0065 K/m, g₀ = 9,80665 m/s², R = 287,05 J/(kg·K). Stampa i risultati con 4 cifre significative.</q>
+    </div>
+  </div>
+
+  <div style="margin-top:64px">
+    <h3 style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase;margin-bottom:14px">Il ciclo virtuoso · chiedere – leggere – validare</h3>
+    <div class="cycle">
+      <div class="cy-step"><div class="cy-n">01</div><div class="cy-l">Specifica del problema</div></div>
+      <div class="cy-step"><div class="cy-n">02</div><div class="cy-l">Prompt all'IA</div></div>
+      <div class="cy-step"><div class="cy-n">03</div><div class="cy-l">Lettura del codice</div></div>
+      <div class="cy-step"><div class="cy-n">04</div><div class="cy-l">Esecuzione e test</div></div>
+      <div class="cy-step critical"><div class="cy-n">05</div><div class="cy-l">Confronto con valori noti</div></div>
+      <div class="cy-step"><div class="cy-n">06</div><div class="cy-l">Correzione e raffinamento</div></div>
+    </div>
+    <p style="margin-top:24px;font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--ink-dim);line-height:1.7;max-width:780px">
+      La fase <span style="color:var(--gold);font-weight:700">05</span> è ciò che ci distingue da chi copia-e-incolla. Senza validazione, qualunque output è solo <em>plausibile</em>, non corretto.
+    </p>
+  </div>
+</section>
+
+<!-- ANATOMY -->
+<section id="anatomy">
+  <div class="section-head">
+    <div class="num">§ 06 · Anatomia minima di uno script</div>
+    <h2>Quattro cose<br><em>da riconoscere</em> subito,<br>prima di <span class="accent">tutto il resto</span>.</h2>
+    <p class="lead">
+      Commenti, import, assegnazioni, indentazione: la grammatica essenziale di Python. Sapere distinguere questi quattro elementi è la differenza tra leggere e fissare il codice.
+    </p>
+  </div>
+
+  <div class="code-stage">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>scratch · python 3.x</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="cm"># 1) Commento: descrive cosa fa il programma</span>
+<span class="ln">2</span><span class="kw">import</span> math                            <span class="cm"># 2) Import di una libreria</span>
+<span class="ln">3</span>
+<span class="ln">4</span><span class="cm"># 3) Assegnazione di una variabile</span>
+<span class="ln">5</span>T0 <span class="op">=</span> <span class="nm">288.15</span>                          <span class="cm"># K, temperatura SL ISA</span>
+<span class="ln">6</span>
+<span class="ln">7</span><span class="cm"># 4) Calcolo (espressione)</span>
+<span class="ln">8</span>a0 <span class="op">=</span> math.<span class="fn">sqrt</span>(<span class="nm">1.4</span> <span class="op">*</span> <span class="nm">287.05</span> <span class="op">*</span> T0)
+<span class="ln">9</span>
+<span class="ln">10</span><span class="cm"># 5) Output a video</span>
+<span class="ln">11</span><span class="bi">print</span>(<span class="st">"Velocita' del suono al SL ISA ="</span>, a0, <span class="st">"m/s"</span>)</div>
+  </div>
+
+  <div class="code-notes">
+    <div class="cn">
+      <div class="cn-tag">01 · Commenti</div>
+      <div class="cn-title">La riga che comincia con #</div>
+      <div class="cn-text">L'interprete la ignora. Ma è fondamentale per chi legge — e <em>tu</em> sei chi leggerà fra tre mesi.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">02 · Import</div>
+      <div class="cn-title">Caricare una libreria</div>
+      <div class="cn-text">Con <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">import math</code> rendiamo disponibili funzioni come <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">sqrt</code>, <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">pi</code>, <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">exp</code>.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">03 · Assegnazione</div>
+      <div class="cn-title">Il segno = non è uguale</div>
+      <div class="cn-text">In Python <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">T0 = 288.15</code> significa "associa il valore al nome", non "T₀ uguale a 288,15".</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">04 · Indentazione</div>
+      <div class="cn-title">Lo spazio ha sintassi</div>
+      <div class="cn-text">A differenza del C++, gli spazi a inizio riga <em>non sono abbellimento</em>: delimitano i blocchi di codice.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ISA -->
+<section id="isa">
+  <div class="section-head">
+    <div class="num">§ 07 · Il problema fisico · Atmosfera Tipo ISA</div>
+    <h2>Modello standard<br><em>ICAO 1964</em> · <span class="accent">ISO 2533</span>:<br>la troposfera in tre formule.</h2>
+    <p class="lead">
+      In troposfera (0 ≤ h ≤ 11 000 m), temperatura, pressione e densità seguono un modello deterministico. Dalla condizione di equilibrio idrostatico e dall'equazione di stato dei gas ideali si ricava tutto.
+    </p>
+  </div>
+
+  <div class="isa-box">
+    <div class="isa-formulas">
+      <h4>Le tre relazioni della troposfera</h4>
+      <p class="desc">Temperatura lineare con la quota geopotenziale, pressione da integrazione dell'equilibrio idrostatico, densità dalla legge dei gas perfetti.</p>
+      <div class="isa-formula" data-formula="T(h) = T_0 + \lambda\,h"></div>
+      <div class="isa-formula" data-formula="p(h) = p_0 \left( \dfrac{T(h)}{T_0} \right)^{-\,g_0/(\lambda R)}"></div>
+      <div class="isa-formula" data-formula="\rho(h) = \dfrac{p(h)}{R\,T(h)}"></div>
+    </div>
+    <div class="isa-const">
+      <h4>Costanti ISA — livello del mare</h4>
+      <dl>
+        <dt>T<sub>0</sub></dt><dd>= 288,15 K</dd>
+        <dt>p<sub>0</sub></dt><dd>= 101 325 Pa</dd>
+        <dt>ρ<sub>0</sub></dt><dd>= 1,225 kg/m³</dd>
+        <dt>g<sub>0</sub></dt><dd>= 9,80665 m/s²</dd>
+        <dt>R</dt><dd>= 287,05 J/(kg·K)</dd>
+        <dt>λ</dt><dd>= −6,5 × 10⁻³ K/m</dd>
+        <dt>h<sub>max</sub></dt><dd>= 11 000 m (top troposfera)</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- SCRIPT -->
+<section id="script">
+  <div class="section-head">
+    <div class="num">§ 08 · Lo script · isa_troposfera.py</div>
+    <h2>Dal modello al codice:<br>la versione <em>commentata</em>,<br>riga per <span class="accent">riga</span>.</h2>
+    <p class="lead">
+      Lo script che genereremo in laboratorio. Ogni blocco è commentato: costanti, input, controllo di validità, calcolo, output formattato. Saperlo leggere è l'obiettivo della giornata.
+    </p>
+  </div>
+
+  <div class="code-stage">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>isa_troposfera.py · python 3.x</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="st">"""</span>
+<span class="ln">2</span><span class="st">isa_troposfera.py</span>
+<span class="ln">3</span><span class="st">Calcolo dell'atmosfera tipo (ISA-ICAO) in troposfera.</span>
+<span class="ln">4</span><span class="st">Valido per 0 &lt;= h &lt;= 11000 m (quota geopotenziale).</span>
+<span class="ln">5</span><span class="st">"""</span>
+<span class="ln">6</span>
+<span class="ln">7</span><span class="kw">import</span> math
+<span class="ln">8</span>
+<span class="ln">9</span><span class="cm"># --- Costanti di riferimento (ISO 2533) ---------------------------------</span>
+<span class="ln">10</span>T0    <span class="op">=</span> <span class="nm">288.15</span>     <span class="cm"># K    -- temperatura al livello del mare</span>
+<span class="ln">11</span>p0    <span class="op">=</span> <span class="nm">101325.0</span>   <span class="cm"># Pa   -- pressione al livello del mare</span>
+<span class="ln">12</span>g0    <span class="op">=</span> <span class="nm">9.80665</span>    <span class="cm"># m/s^2 -- accelerazione di gravita' standard</span>
+<span class="ln">13</span>R     <span class="op">=</span> <span class="nm">287.05</span>     <span class="cm"># J/(kg*K) -- costante dell'aria</span>
+<span class="ln">14</span>lam   <span class="op">=</span> <span class="op">-</span><span class="nm">0.0065</span>    <span class="cm"># K/m  -- gradiente termico in troposfera</span>
+<span class="ln">15</span>h_max <span class="op">=</span> <span class="nm">11000.0</span>    <span class="cm"># m    -- limite superiore della troposfera</span>
+<span class="ln">16</span>
+<span class="ln">17</span><span class="cm"># --- Input da tastiera --------------------------------------------------</span>
+<span class="ln">18</span>h <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"Quota geopotenziale h [m] (0..11000): "</span>))
+<span class="ln">19</span>
+<span class="ln">20</span><span class="cm"># --- Controllo di validita' del dato ------------------------------------</span>
+<span class="ln">21</span><span class="kw">if</span> h <span class="op">&lt;</span> <span class="nm">0</span> <span class="kw">or</span> h <span class="op">&gt;</span> h_max:
+<span class="ln">22</span>    <span class="bi">print</span>(<span class="st">"Quota fuori dal campo di validita' della troposfera ISA."</span>)
+<span class="ln">23</span><span class="kw">else</span>:
+<span class="ln">24</span>    <span class="cm"># --- Calcolo grandezze ISA -----------------------------------------</span>
+<span class="ln">25</span>    T   <span class="op">=</span> T0 <span class="op">+</span> lam <span class="op">*</span> h                          <span class="cm"># K</span>
+<span class="ln">26</span>    p   <span class="op">=</span> p0 <span class="op">*</span> (T <span class="op">/</span> T0) <span class="op">**</span> (<span class="op">-</span>g0 <span class="op">/</span> (lam <span class="op">*</span> R))    <span class="cm"># Pa</span>
+<span class="ln">27</span>    rho <span class="op">=</span> p <span class="op">/</span> (R <span class="op">*</span> T)                            <span class="cm"># kg/m^3</span>
+<span class="ln">28</span>    a   <span class="op">=</span> math.<span class="fn">sqrt</span>(<span class="nm">1.4</span> <span class="op">*</span> R <span class="op">*</span> T)                  <span class="cm"># m/s, velocita' del suono</span>
+<span class="ln">29</span>
+<span class="ln">30</span>    <span class="cm"># --- Output --------------------------------------------------------</span>
+<span class="ln">31</span>    <span class="bi">print</span>(<span class="st">f"Quota        h = {h:8.1f} m"</span>)
+<span class="ln">32</span>    <span class="bi">print</span>(<span class="st">f"Temperatura  T = {T:8.4g} K"</span>)
+<span class="ln">33</span>    <span class="bi">print</span>(<span class="st">f"Pressione    p = {p:8.4g} Pa"</span>)
+<span class="ln">34</span>    <span class="bi">print</span>(<span class="st">f"Densita'   rho = {rho:8.4g} kg/m^3"</span>)
+<span class="ln">35</span>    <span class="bi">print</span>(<span class="st">f"Vel. suono   a = {a:8.4g} m/s"</span>)</div>
+  </div>
+
+  <div class="code-notes">
+    <div class="cn">
+      <div class="cn-tag">A · Docstring</div>
+      <div class="cn-title">Le tre virgolette </div>
+      <div class="cn-text">Una stringa di documentazione che spiega lo scopo dello script. Si legge senza eseguire il codice.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">B · input / float</div>
+      <div class="cn-title">Da stringa a numero</div>
+      <div class="cn-text"><code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">input()</code> legge testo. <code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">float()</code> lo converte in numero decimale.</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">C · if / else</div>
+      <div class="cn-title">I due punti aprono</div>
+      <div class="cn-text">Il blocco indentato è ciò che viene eseguito quando la condizione è vera (o falsa nell'<code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">else</code>).</div>
+    </div>
+    <div class="cn">
+      <div class="cn-tag">D · f-string</div>
+      <div class="cn-title">Stringhe con variabili</div>
+      <div class="cn-text"><code style="font-family:'JetBrains Mono',monospace;color:var(--teal)">f"{T:8.4g}"</code>: 8 caratteri di larghezza, 4 cifre significative, notazione "g".</div>
+    </div>
+  </div>
+</section>
+
+<!-- VALIDATION -->
+<section id="validation">
+  <div class="section-head">
+    <div class="num">§ 09 · Validazione · il momento della verità</div>
+    <h2>Non si firma<br>un calcolo che <em>non</em> si è<br><span class="accent">controllato</span>.</h2>
+    <p class="lead">
+      Prima di credere allo script bisogna confrontarlo con una tabella nota. Se sbagliano i valori al livello del mare, sbagliano tutti gli altri. È così che funziona il calcolo strutturale, ed è così che funziona il codice.
+    </p>
+  </div>
+
+  <div class="val-table">
+    <table>
+      <thead>
+        <tr><th>h [m]</th><th>T [K]</th><th>p [Pa]</th><th>ρ [kg/m³]</th></tr>
+      </thead>
+      <tbody>
+        <tr class="highlight"><td>0</td><td>288,15</td><td>101 325</td><td>1,2250</td></tr>
+        <tr><td>1 000</td><td>281,65</td><td>89 876</td><td>1,1117</td></tr>
+        <tr><td>5 000</td><td>255,65</td><td>54 048</td><td>0,7364</td></tr>
+        <tr class="highlight"><td>11 000</td><td>216,65</td><td>22 632</td><td>0,3639</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="val-test">
+    <h4>Procedura di test · prima di credere al programma</h4>
+    <ol>
+      <li>Lancia lo script e inserisci <strong>h = 0</strong>.</li>
+      <li>Verifica che venga <em>T</em> = 288,15 K, <em>p</em> = 101 325 Pa, <em>ρ</em> ≈ 1,225 kg/m³.</li>
+      <li>Ripeti con <strong>h = 11 000 m</strong>: <em>T</em> deve venire 216,65 K.</li>
+      <li>Se <em>uno solo</em> di questi valori è sbagliato, <strong style="color:var(--rose)">non vale nessuno degli altri risultati</strong>.</li>
+    </ol>
+  </div>
+
+  <h3 style="margin-top:80px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase;margin-bottom:14px">Esercizi per casa</h3>
+  <div class="exercises">
+    <div class="ex-card">
+      <div class="ex-n">Ex · 01</div>
+      <div class="ex-t">Sistema imperiale</div>
+      <div class="ex-d">Modifica lo script perché l'utente possa inserire la quota in piedi (ft). Suggerimento: <code>1 ft = 0,3048 m</code>. Conserva il controllo di validità della troposfera.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-n">Ex · 02</div>
+      <div class="ex-t">Rapporti adimensionali</div>
+      <div class="ex-d">Aggiungi il calcolo dei rapporti <code>θ = T/T₀</code>, <code>δ = p/p₀</code>, <code>σ = ρ/ρ₀</code>. Stampali con 4 cifre significative e verifica i valori a h = 0.</div>
+    </div>
+    <div class="ex-card">
+      <div class="ex-n">Ex · 03</div>
+      <div class="ex-t">Domanda di comprensione</div>
+      <div class="ex-d">Senza eseguire il codice, prevedi: cosa stamperà lo script se l'utente inserisce <code>12000</code>? Giustifica la risposta leggendo il blocco <code>if...else</code>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- PYTHON -> WEB -->
+<section id="web">
+  <div class="section-head">
+    <div class="num">§ 10 · Da Python al Web · pubblicare su GitHub</div>
+    <h2>Lo stesso modello,<br>nello stesso giorno,<br><em>online</em> per <span class="accent">tutto il mondo</span>.</h2>
+    <p class="lead">
+      Lo script Python funziona, ma vive solo nel nostro computer. Chiediamo all'IA di tradurlo in HTML+JavaScript — un singolo file che si apre nel browser e si pubblica su GitHub Pages in cinque minuti. Stesso modello fisico, stesse costanti, stessa validazione: cambia solo il vestito.
+    </p>
+  </div>
+
+  <!-- Bridge visivo -->
+  <div class="bridge">
+    <div class="bridge-side py">
+      <div class="bs-stack">Stack · Sorgente</div>
+      <div class="bs-name">isa_troposfera.py</div>
+      <div class="bs-desc">Script Python · math, input, print, if/else. Funziona da terminale, dentro Thonny o VS Code. Lo abbiamo già scritto e validato.</div>
+    </div>
+    <div class="bridge-arrow">
+      →
+      <span class="label">PROMPT IA</span>
+    </div>
+    <div class="bridge-side web">
+      <div class="bs-stack">Stack · Destinazione</div>
+      <div class="bs-name">isa_troposfera.html</div>
+      <div class="bs-desc">Singolo file HTML+CSS+JS · si apre con doppio clic, gira nel browser, si pubblica su GitHub Pages con URL pubblico.</div>
+    </div>
+  </div>
+
+  <!-- Il prompt di traduzione -->
+  <div class="translate-prompt">
+    <div class="ptag">✓ Prompt di traduzione · cosa diremo all'IA</div>
+    <div class="pname">Stesso modello, stessa specifica · cambia solo il linguaggio</div>
+    <q><strong>Traduci</strong> lo script Python che segue in un <strong>singolo file HTML</strong> autocontenuto (HTML + CSS + JavaScript, nessuna libreria esterna), pronto da pubblicare su GitHub Pages. Mantieni <em>identico</em> il modello fisico (ISA-ICAO in troposfera) e <em>identiche</em> le costanti (T₀ = 288,15, p₀ = 101325, g₀ = 9,80665, R = 287,05, λ = −0,0065). L'utente deve inserire la quota <em>h</em> in un campo numerico con un toggle metri/piedi, premere un pulsante "Calcola" e ottenere T [K], p [Pa], ρ [kg/m³] e velocità del suono a [m/s]. Mostra un messaggio di errore se h è fuori dal campo 0–11 000 m. Stile sobrio, dark mode, font monospace per i numeri. Commenta il codice JS sezione per sezione. <strong>Allega lo script Python qui di seguito:</strong>  [...isa_troposfera.py...]</q>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Perché funziona</div>
+    <div class="cl-text">
+      Notate la simmetria con il prompt che abbiamo già usato per generare Python: <strong>cosa, dati, ipotesi, forma del risultato</strong>. Il modello fisico è il nostro, validato a tavolino. L'IA traduce solo il <em>linguaggio</em>, non la fisica.
+    </div>
+  </div>
+
+  <!-- Demo live -->
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Il risultato · provatelo dal vivo</h3>
+  <p style="margin-bottom:24px;font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--ink-dim);line-height:1.7;max-width:780px">
+    Qui sotto, embeddato in questa pagina, gira il calcolatore HTML/JS generato dall'IA a partire dallo script Python. È <em>esattamente</em> il file che pubblicherete su GitHub. Provate a inserire 0, 5000, 11000 e confrontate con la tabella ISA del §9.
+  </p>
+  <div class="demo-wrap">
+    <div class="demo-head">
+      <span>● isa_troposfera.html · live demo</span>
+      <span class="url"><span>username</span>.github.io/aero-python/<span>isa</span>.html</span>
+    </div>
+    <iframe class="demo-iframe" srcdoc="<!DOCTYPE html>
+<html lang=&quot;it&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<title>Atmosfera Tipo ISA · Calcolatore in troposfera</title>
+<style>
+  /* =========================================================
+     ISA Troposfera — single-file HTML/JS
+     Traduzione del modello Python isa_troposfera.py
+     Modello: ICAO 1964 / ISO 2533, valido 0 ≤ h ≤ 11000 m
+     ========================================================= */
+  :root{
+    --bg:#0a1417;
+    --panel:#0f1c20;
+    --ink:#eef4f1;
+    --dim:#9bb1ad;
+    --teal:#6df0d2;
+    --gold:#f7c873;
+    --rose:#ff8a8a;
+    --line:rgba(109,240,210,0.2);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(ellipse at top,#102126,#0a1417 60%);
+    color:var(--ink);
+    font-family:&quot;Segoe UI&quot;,system-ui,sans-serif;
+    min-height:100vh;
+    padding:40px 20px;
+    line-height:1.5;
+  }
+  .container{max-width:880px;margin:0 auto}
+
+  header{margin-bottom:32px;text-align:center}
+  header .tag{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.3em;
+    color:var(--gold);text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  header h1{
+    font-weight:300;font-size:clamp(28px,4.5vw,42px);
+    letter-spacing:-0.01em;
+  }
+  header h1 em{color:var(--teal);font-style:italic}
+  header p{
+    margin-top:10px;color:var(--dim);font-size:15px;
+    max-width:580px;margin-left:auto;margin-right:auto;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:28px;
+    margin-bottom:20px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  .input-row{
+    display:flex;gap:12px;align-items:end;flex-wrap:wrap;
+  }
+  .input-row .field{flex:1;min-width:200px}
+  label{
+    display:block;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.18em;
+    color:var(--teal);text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  input[type=&quot;number&quot;]{
+    width:100%;
+    background:#06121a;
+    border:1px solid var(--line);
+    border-radius:4px;
+    color:var(--ink);
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:18px;
+    padding:12px 14px;
+    transition:border-color 0.2s;
+  }
+  input[type=&quot;number&quot;]:focus{outline:none;border-color:var(--teal)}
+  .unit-toggle{
+    display:flex;gap:0;
+    border:1px solid var(--line);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .unit-toggle button{
+    background:transparent;border:none;color:var(--dim);
+    padding:12px 18px;cursor:pointer;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:13px;letter-spacing:0.1em;
+    transition:all 0.2s;
+  }
+  .unit-toggle button.active{background:var(--teal);color:#0a1417;font-weight:700}
+  .unit-toggle button:hover:not(.active){background:rgba(109,240,210,0.1);color:var(--ink)}
+
+  button.calc{
+    margin-top:18px;width:100%;
+    background:var(--gold);color:#1a1208;
+    border:none;border-radius:4px;
+    padding:14px;cursor:pointer;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:14px;letter-spacing:0.18em;
+    text-transform:uppercase;font-weight:700;
+    transition:transform 0.15s,box-shadow 0.15s;
+  }
+  button.calc:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(247,200,115,0.3)}
+  button.calc:active{transform:translateY(0)}
+
+  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  .res-card{
+    background:#06121a;
+    border:1px solid var(--line);
+    border-left:3px solid var(--teal);
+    border-radius:4px;
+    padding:18px 20px;
+  }
+  .res-card .name{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:10px;letter-spacing:0.2em;
+    color:var(--dim);text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .res-card .value{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:22px;color:var(--ink);font-weight:700;
+  }
+  .res-card .unit{
+    font-size:13px;color:var(--teal);margin-left:4px;font-weight:400;
+  }
+
+  .error-msg{
+    color:var(--rose);
+    background:rgba(255,138,138,0.08);
+    border:1px solid rgba(255,138,138,0.3);
+    padding:14px 18px;border-radius:4px;
+    font-size:14px;display:none;margin-bottom:18px;
+  }
+  .error-msg.show{display:block}
+
+  .ref-table{
+    width:100%;border-collapse:collapse;
+    font-family:&quot;Courier New&quot;,monospace;font-size:13px;
+  }
+  .ref-table th,.ref-table td{
+    padding:10px 14px;text-align:right;
+    border-bottom:1px solid rgba(109,240,210,0.08);
+  }
+  .ref-table th{
+    font-size:10px;letter-spacing:0.18em;
+    color:var(--teal);text-transform:uppercase;font-weight:400;
+    background:rgba(109,240,210,0.04);
+  }
+  .ref-table th:first-child,.ref-table td:first-child{text-align:left}
+  .ref-table td:first-child{color:var(--gold);font-weight:700}
+  .ref-table tr:last-child td{border-bottom:none}
+
+  .panel-title{
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;letter-spacing:0.22em;
+    color:var(--gold);text-transform:uppercase;
+    margin-bottom:18px;
+  }
+
+  footer{
+    margin-top:40px;text-align:center;
+    font-family:&quot;Courier New&quot;,monospace;
+    font-size:11px;color:var(--dim);
+    letter-spacing:0.1em;
+  }
+  footer a{color:var(--teal);text-decoration:none}
+
+  @media (max-width:600px){
+    .input-row{flex-direction:column;align-items:stretch}
+    .unit-toggle{width:100%}
+    .unit-toggle button{flex:1}
+  }
+</style>
+</head>
+<body>
+<div class=&quot;container&quot;>
+
+  <header>
+    <div class=&quot;tag&quot;>ISA · ICAO 1964 · ISO 2533</div>
+    <h1>Atmosfera Tipo · <em>Troposfera</em></h1>
+    <p>Calcolatore di temperatura, pressione, densità e velocità del suono in funzione della quota geopotenziale (0 ≤ h ≤ 11 000 m).</p>
+  </header>
+
+  <!-- INPUT -->
+  <div class=&quot;panel&quot;>
+    <div class=&quot;panel-title&quot;>Input · Quota di volo</div>
+    <div class=&quot;input-row&quot;>
+      <div class=&quot;field&quot;>
+        <label for=&quot;h-input&quot;>Quota geopotenziale h</label>
+        <input type=&quot;number&quot; id=&quot;h-input&quot; value=&quot;0&quot; step=&quot;100&quot; min=&quot;0&quot;>
+      </div>
+      <div class=&quot;unit-toggle&quot; role=&quot;group&quot; aria-label=&quot;Unità di misura&quot;>
+        <button id=&quot;unit-m&quot;  class=&quot;active&quot;>metri</button>
+        <button id=&quot;unit-ft&quot;>piedi (ft)</button>
+      </div>
+    </div>
+    <button class=&quot;calc&quot; id=&quot;calc-btn&quot;>Calcola ISA</button>
+  </div>
+
+  <!-- ERRORE -->
+  <div class=&quot;error-msg&quot; id=&quot;error-msg&quot;>
+    Quota fuori dal campo di validità della troposfera ISA (0 – 11 000 m / 0 – 36 089 ft).
+  </div>
+
+  <!-- RISULTATI -->
+  <div class=&quot;panel&quot; id=&quot;results-panel&quot;>
+    <div class=&quot;panel-title&quot;>Output · Grandezze ISA</div>
+    <div class=&quot;results&quot;>
+      <div class=&quot;res-card&quot;>
+        <div class=&quot;name&quot;>Temperatura T</div>
+        <div class=&quot;value&quot;><span id=&quot;out-T&quot;>288.15</span><span class=&quot;unit&quot;>K</span></div>
+      </div>
+      <div class=&quot;res-card&quot;>
+        <div class=&quot;name&quot;>Pressione p</div>
+        <div class=&quot;value&quot;><span id=&quot;out-p&quot;>101325</span><span class=&quot;unit&quot;>Pa</span></div>
+      </div>
+      <div class=&quot;res-card&quot;>
+        <div class=&quot;name&quot;>Densità ρ</div>
+        <div class=&quot;value&quot;><span id=&quot;out-rho&quot;>1.225</span><span class=&quot;unit&quot;>kg/m³</span></div>
+      </div>
+      <div class=&quot;res-card&quot;>
+        <div class=&quot;name&quot;>Vel. suono a</div>
+        <div class=&quot;value&quot;><span id=&quot;out-a&quot;>340.3</span><span class=&quot;unit&quot;>m/s</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VALIDAZIONE -->
+  <div class=&quot;panel&quot;>
+    <div class=&quot;panel-title&quot;>Validazione · Tabella ISA di riferimento</div>
+    <table class=&quot;ref-table&quot;>
+      <thead>
+        <tr><th>h [m]</th><th>T [K]</th><th>p [Pa]</th><th>ρ [kg/m³]</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0</td><td>288,15</td><td>101 325</td><td>1,2250</td></tr>
+        <tr><td>1 000</td><td>281,65</td><td>89 876</td><td>1,1117</td></tr>
+        <tr><td>5 000</td><td>255,65</td><td>54 048</td><td>0,7364</td></tr>
+        <tr><td>11 000</td><td>216,65</td><td>22 632</td><td>0,3639</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    Traduzione HTML/JS dello script <code style=&quot;color:var(--teal)&quot;>isa_troposfera.py</code> · Lezione 01 · ITT Aeronautico
+  </footer>
+
+</div>
+
+<script>
+/* =============================================================
+   Modello ISA - troposfera (ICAO 1964 / ISO 2533)
+   Costanti identiche a quelle dello script Python originale.
+   ============================================================= */
+const T0    = 288.15;     // K
+const p0    = 101325.0;   // Pa
+const g0    = 9.80665;    // m/s^2
+const R     = 287.05;     // J/(kg*K)
+const lam   = -0.0065;    // K/m  (gradiente termico in troposfera)
+const h_max = 11000.0;    // m
+const FT_TO_M = 0.3048;   // 1 ft = 0,3048 m
+
+/* Stato dell'unità di misura selezionata */
+let unit = &quot;m&quot;;
+
+/* --- Riferimenti agli elementi del DOM --- */
+const hInput   = document.getElementById(&quot;h-input&quot;);
+const btnCalc  = document.getElementById(&quot;calc-btn&quot;);
+const btnM     = document.getElementById(&quot;unit-m&quot;);
+const btnFt    = document.getElementById(&quot;unit-ft&quot;);
+const errorMsg = document.getElementById(&quot;error-msg&quot;);
+const resPanel = document.getElementById(&quot;results-panel&quot;);
+
+const outT   = document.getElementById(&quot;out-T&quot;);
+const outP   = document.getElementById(&quot;out-p&quot;);
+const outRho = document.getElementById(&quot;out-rho&quot;);
+const outA   = document.getElementById(&quot;out-a&quot;);
+
+/* --- Funzione principale di calcolo --- */
+function calcolaISA(h){
+  // h è SEMPRE in metri qui dentro
+  if(h < 0 || h > h_max){
+    return null;     // segnale di errore: quota non valida
+  }
+  const T   = T0 + lam * h;                              // K
+  const p   = p0 * Math.pow(T / T0, -g0 / (lam * R));    // Pa
+  const rho = p / (R * T);                               // kg/m^3
+  const a   = Math.sqrt(1.4 * R * T);                    // m/s
+  return { T, p, rho, a };
+}
+
+/* --- Formattazione con cifre significative --- */
+function fmt(x, sig){
+  return x.toPrecision(sig);
+}
+
+/* --- Aggiornamento dell'interfaccia --- */
+function aggiornaUI(){
+  let h = parseFloat(hInput.value);
+  if(isNaN(h)){
+    errorMsg.textContent = &quot;Inserisci un valore numerico valido per la quota.&quot;;
+    errorMsg.classList.add(&quot;show&quot;);
+    resPanel.style.opacity = 0.35;
+    return;
+  }
+
+  // Conversione in metri se l'utente ha inserito feet
+  const h_m = (unit === &quot;ft&quot;) ? h * FT_TO_M : h;
+
+  const ris = calcolaISA(h_m);
+  if(ris === null){
+    errorMsg.textContent = &quot;Quota fuori dal campo di validità della troposfera ISA (0 – 11 000 m / 0 – 36 089 ft).&quot;;
+    errorMsg.classList.add(&quot;show&quot;);
+    resPanel.style.opacity = 0.35;
+    return;
+  }
+
+  errorMsg.classList.remove(&quot;show&quot;);
+  resPanel.style.opacity = 1;
+
+  outT.textContent   = fmt(ris.T,   5);
+  outP.textContent   = Math.round(ris.p).toLocaleString(&quot;it-IT&quot;);
+  outRho.textContent = fmt(ris.rho, 4);
+  outA.textContent   = fmt(ris.a,   4);
+}
+
+/* --- Listener degli eventi --- */
+btnCalc.addEventListener(&quot;click&quot;, aggiornaUI);
+hInput.addEventListener(&quot;keydown&quot;, (e) => {
+  if(e.key === &quot;Enter&quot;) aggiornaUI();
+});
+
+btnM.addEventListener(&quot;click&quot;, () => {
+  if(unit === &quot;m&quot;) return;
+  unit = &quot;m&quot;;
+  btnM.classList.add(&quot;active&quot;);
+  btnFt.classList.remove(&quot;active&quot;);
+  // Converti il valore corrente da ft a m
+  hInput.value = (parseFloat(hInput.value) * FT_TO_M).toFixed(0);
+  hInput.step = 100;
+  aggiornaUI();
+});
+btnFt.addEventListener(&quot;click&quot;, () => {
+  if(unit === &quot;ft&quot;) return;
+  unit = &quot;ft&quot;;
+  btnFt.classList.add(&quot;active&quot;);
+  btnM.classList.remove(&quot;active&quot;);
+  hInput.value = (parseFloat(hInput.value) / FT_TO_M).toFixed(0);
+  hInput.step = 500;
+  aggiornaUI();
+});
+
+/* Calcolo iniziale alla pagina aperta */
+aggiornaUI();
+</script>
+</body>
+</html>
+" title="ISA Troposfera Calculator"></iframe>
+  </div>
+
+  <!-- Steps GitHub Pages -->
+  <h3 style="margin-top:80px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase">Pubblicare su GitHub Pages · quattro passi</h3>
+  <p style="margin-bottom:24px;font-family:'Fraunces',serif;font-style:italic;font-size:17px;color:var(--ink-dim);line-height:1.7;max-width:780px">
+    GitHub Pages trasforma un file <code style="font-family:'JetBrains Mono',monospace;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px">.html</code> in un sito web pubblico, gratis e in pochi minuti. Vi serve solo un account GitHub.
+  </p>
+
+  <div class="gh-steps">
+    <div class="gh-step">
+      <div class="gs-n">Step · 01</div>
+      <div class="gs-t">Crea il repository</div>
+      <div class="gs-d">Su <code>github.com</code> → <code>New repository</code> → nome <code>aero-python</code> → spunta "Add a README" → <code>Create</code>.</div>
+    </div>
+    <div class="gh-step">
+      <div class="gs-n">Step · 02</div>
+      <div class="gs-t">Carica il file</div>
+      <div class="gs-d">Bottone <code>Add file → Upload files</code> · trascina <code>isa_troposfera.html</code> nella zona → <code>Commit changes</code>.</div>
+    </div>
+    <div class="gh-step">
+      <div class="gs-n">Step · 03</div>
+      <div class="gs-t">Attiva Pages</div>
+      <div class="gs-d">Tab <code>Settings → Pages</code> · in <em>Branch</em> scegli <code>main</code> · cartella <code>/ (root)</code> → <code>Save</code>.</div>
+    </div>
+    <div class="gh-step">
+      <div class="gs-n">Step · 04</div>
+      <div class="gs-t">Condividi l'URL</div>
+      <div class="gs-d">Dopo ~1 minuto compare l'indirizzo: <code>username.github.io/aero-python/isa_troposfera.html</code>. Apribile da qualunque dispositivo.</div>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:48px">
+    <div class="cl-label">Una nota didattica</div>
+    <div class="cl-text">
+      Il file HTML che avete generato è il <strong>vostro</strong>: porta il vostro modello, le vostre costanti, il vostro stile. L'IA è stata un'aiutante di traduzione, non l'autrice. Quando lo pubblicate, lo state firmando — e <em>per firmarlo</em>, dovete saperlo leggere riga per riga.
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING -->
+<section class="closing" id="closing">
+  <div class="num" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:18px">§ 11 · Oltre la prima lezione</div>
+  <h2>Programmare<br>è <em>progettare</em>:<br><span class="glow">prima si pensa</span>,<br>poi si scrive.</h2>
+
+  <div class="next">
+    <h3>Cosa faremo nella prossima lezione</h3>
+    <ul>
+      <li>Approfondiamo variabili e tipi: <code>int</code>, <code>float</code>, <code>str</code>, <code>bool</code>.</li>
+      <li>Conversioni di unità: nodi ↔ m/s, ft ↔ m, Pa ↔ hPa, °C ↔ K.</li>
+      <li>Costruzione di una piccola libreria di costanti aeronautiche, riutilizzabile nelle lezioni successive.</li>
+    </ul>
+  </div>
+
+  <div class="motto">
+    Un codice che non si <span class="a">capisce</span><br>è un codice che non si può <span class="b">difendere</span>.
+  </div>
+
+  <div class="signature">
+    <div>ITT INDIRIZZO AERONAUTICO · COSTRUZIONI AERONAUTICHE</div>
+    <div class="right">PROF. ING. B. RAUCCI · LEZIONE 01 · A.S. 2025/26</div>
+  </div>
+</section>
+
+<!-- LIBRARIES -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+<script>
+/* ============================================================
+   1) LENIS — smooth scroll
+   ============================================================ */
+const lenis = new Lenis({
+  duration:1.35,
+  easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),
+  smoothWheel:true,
+  smoothTouch:false,
+});
+function raf(time){
+  lenis.raf(time);
+  requestAnimationFrame(raf);
+}
+requestAnimationFrame(raf);
+
+gsap.registerPlugin(ScrollTrigger);
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add(time => lenis.raf(time*1000));
+gsap.ticker.lagSmoothing(0);
+
+/* ============================================================
+   2) THREE.JS — painted texture · atmospheric drift
+   ============================================================ */
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({canvas,antialias:false,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  const mouse = new THREE.Vector2(0.5,0.5);
+  const targetMouse = new THREE.Vector2(0.5,0.5);
+
+  const uniforms = {
+    uTime:{value:0},
+    uMouse:{value:mouse},
+    uResolution:{value:new THREE.Vector2(window.innerWidth,window.innerHeight)},
+    uScroll:{value:0},
+  };
+
+  const vertexShader = `void main(){ gl_Position = vec4(position,1.0); }`;
+
+  /* Atmospheric layered noise — drifts as cursor moves,
+     evokes high-altitude stratification + flow lines */
+  const fragmentShader = `
+    precision highp float;
+    uniform float uTime;
+    uniform vec2  uMouse;
+    uniform vec2  uResolution;
+    uniform float uScroll;
+
+    float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+    float noise(vec2 p){
+      vec2 i=floor(p); vec2 f=fract(p);
+      float a=hash(i);
+      float b=hash(i+vec2(1.0,0.0));
+      float c=hash(i+vec2(0.0,1.0));
+      float d=hash(i+vec2(1.0,1.0));
+      vec2 u=f*f*(3.0-2.0*f);
+      return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+    }
+    float fbm(vec2 p){
+      float v=0.0; float a=0.5;
+      for(int i=0;i<5;i++){
+        v += a*noise(p);
+        p = p*2.05; a*=0.5;
+      }
+      return v;
+    }
+
+    void main(){
+      vec2 uv = gl_FragCoord.xy / uResolution.xy;
+      vec2 p  = uv;
+      p.x *= uResolution.x/uResolution.y;
+
+      vec2 m = uMouse;
+      m.x *= uResolution.x/uResolution.y;
+      vec2 toM = m - p;
+      float dM = length(toM);
+
+      float t = uTime*0.06;
+
+      /* horizontal "atmospheric layers" — stratification of T(h) */
+      float layers = sin(p.y*8.0 + fbm(p*1.6 + t)*2.2 + uScroll*3.0) * 0.5 + 0.5;
+      layers = pow(layers, 1.4);
+
+      /* domain warp */
+      vec2 q;
+      q.x = fbm(p*1.3 + vec2(0.0,t));
+      q.y = fbm(p*1.3 + vec2(5.2,-t*0.9));
+
+      vec2 r;
+      r.x = fbm(p*1.7 + 3.6*q + vec2(1.7,9.2) + t*0.6);
+      r.y = fbm(p*1.7 + 3.6*q + vec2(8.3,2.8) - t*0.4);
+
+      float n = fbm(p*2.0 + 2.8*r);
+
+      /* cursor pulls the texture */
+      float warp = smoothstep(0.0, 0.65, 1.0 - dM*0.85);
+      n += warp*0.16*sin(uTime*0.5 + dM*7.0);
+      n = mix(n, layers, 0.22);
+
+      /* palette: deep teal-greens with gold accents at warp peaks */
+      vec3 c1 = vec3(0.014, 0.034, 0.035);  /* near-black */
+      vec3 c2 = vec3(0.02,  0.10,  0.10);   /* deep petrol */
+      vec3 c3 = vec3(0.05,  0.34,  0.30);   /* teal */
+      vec3 c4 = vec3(0.97,  0.78,  0.45);   /* gold */
+
+      vec3 col = mix(c1, c2, smoothstep(0.0,0.55,n));
+      col      = mix(col, c3, smoothstep(0.55,0.85,n));
+      col      = mix(col, c4*0.55, smoothstep(0.85,1.08,n)*warp);
+
+      /* cursor glow */
+      vec3 glow = vec3(0.42,0.94,0.85) * pow(smoothstep(0.42,0.0,dM), 2.4) * 0.20;
+      col += glow;
+
+      /* grain */
+      float g = (hash(uv*uResolution.xy + uTime) - 0.5) * 0.045;
+      col += g;
+
+      /* vignette */
+      float v = 1.0 - smoothstep(0.65,1.15,length(uv - 0.5));
+      col *= mix(0.6, 1.0, v);
+
+      /* scroll tint: shifts from teal-dominant to gold-warmer */
+      col = mix(col, col * vec3(1.05, 0.97, 0.88), uScroll*0.35);
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({vertexShader, fragmentShader, uniforms});
+  const geo = new THREE.PlaneGeometry(2,2);
+  scene.add(new THREE.Mesh(geo,material));
+
+  window.addEventListener('mousemove',e=>{
+    targetMouse.x = e.clientX / window.innerWidth;
+    targetMouse.y = 1 - e.clientY / window.innerHeight;
+  });
+  window.addEventListener('touchmove',e=>{
+    if(e.touches[0]){
+      targetMouse.x = e.touches[0].clientX / window.innerWidth;
+      targetMouse.y = 1 - e.touches[0].clientY / window.innerHeight;
+    }
+  },{passive:true});
+
+  window.addEventListener('resize',()=>{
+    renderer.setSize(window.innerWidth,window.innerHeight);
+    uniforms.uResolution.value.set(window.innerWidth,window.innerHeight);
+  });
+
+  let scrollNorm = 0;
+  lenis.on('scroll', ({scroll, limit}) => {
+    scrollNorm = limit > 0 ? scroll/limit : 0;
+  });
+
+  const clock = new THREE.Clock();
+  function render(){
+    mouse.x += (targetMouse.x - mouse.x) * 0.06;
+    mouse.y += (targetMouse.y - mouse.y) * 0.06;
+    uniforms.uTime.value = clock.getElapsedTime();
+    uniforms.uScroll.value += (scrollNorm - uniforms.uScroll.value) * 0.05;
+    renderer.render(scene,camera);
+    requestAnimationFrame(render);
+  }
+  render();
+})();
+
+/* ============================================================
+   3) KATEX
+   ============================================================ */
+function renderKatex(){
+  document.querySelectorAll('[data-formula]').forEach(el=>{
+    if(el.dataset.rendered) return;
+    try{
+      katex.render(el.dataset.formula, el, {displayMode:true, throwOnError:false});
+      el.dataset.rendered = "true";
+    }catch(e){console.warn(e)}
+  });
+}
+window.addEventListener('load',()=>{
+  const tryRender = () => {
+    if(window.katex){ renderKatex(); }
+    else setTimeout(tryRender, 60);
+  };
+  tryRender();
+});
+
+/* ============================================================
+   4) GSAP ScrollTrigger — cinematic reveals
+   ============================================================ */
+window.addEventListener('load', () => {
+  /* HERO */
+  gsap.from(".hero .eyebrow",{opacity:0,y:20,duration:1.2,delay:0.2,ease:"power3.out"});
+  gsap.from(".hero h1",{opacity:0,y:60,duration:1.4,delay:0.35,ease:"power4.out"});
+  gsap.from(".hero h1 .stamp",{opacity:0,letterSpacing:"0.3em",duration:1.6,delay:0.9,ease:"power3.out"});
+  gsap.from(".hero .sub",{opacity:0,y:24,duration:1.2,delay:0.7,ease:"power3.out"});
+  gsap.from(".hero .meta > div",{opacity:0,y:20,duration:1,delay:1.0,stagger:0.12,ease:"power3.out"});
+
+  /* Section headers */
+  gsap.utils.toArray('.section-head').forEach(head => {
+    const tl = gsap.timeline({
+      scrollTrigger:{ trigger:head, start:"top 78%", toggleActions:"play none none reverse" }
+    });
+    tl.from(head.querySelector('.num'),{opacity:0,y:14,duration:0.7,ease:"power3.out"})
+      .from(head.querySelector('h2'),{opacity:0,y:40,duration:1,ease:"power3.out"},"-=0.4")
+      .from(head.querySelector('.lead'),{opacity:0,y:24,duration:0.9,ease:"power3.out"},"-=0.5");
+  });
+
+  /* Pact */
+  gsap.from('.pact .col',{
+    opacity:0, y:36, duration:0.9, stagger:0.15, ease:"power3.out",
+    scrollTrigger:{trigger:'.pact',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.golden',{
+    opacity:0, x:-30, duration:1, ease:"power3.out",
+    scrollTrigger:{trigger:'.golden',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Planner */
+  gsap.from('.planner .row',{
+    opacity:0, x:-20, duration:0.6, stagger:0.06, ease:"power3.out",
+    scrollTrigger:{trigger:'.planner',start:"top 80%",toggleActions:"play none none reverse"}
+  });
+
+  /* Timelines */
+  gsap.utils.toArray('.timeline').forEach(tl => {
+    gsap.from(tl.querySelectorAll('.tl-step'),{
+      opacity:0, y:36, duration:0.8, stagger:0.12, ease:"power3.out",
+      scrollTrigger:{trigger:tl,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Prompts */
+  gsap.from('.prompt-card',{
+    opacity:0, y:36, duration:0.9, stagger:0.18, ease:"power3.out",
+    scrollTrigger:{trigger:'.prompts',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+
+  /* Cycle */
+  gsap.from('.cy-step',{
+    opacity:0, scale:0.85, duration:0.6, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.cycle',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Code stages */
+  gsap.utils.toArray('.code-stage').forEach(cs => {
+    gsap.from(cs,{
+      opacity:0, y:30, duration:1, ease:"power3.out",
+      scrollTrigger:{trigger:cs,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+  gsap.utils.toArray('.code-notes').forEach(cn => {
+    gsap.from(cn.querySelectorAll('.cn'),{
+      opacity:0, y:24, duration:0.7, stagger:0.1, ease:"power3.out",
+      scrollTrigger:{trigger:cn,start:"top 85%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* ISA */
+  gsap.from('.isa-formulas, .isa-const',{
+    opacity:0, y:30, duration:0.9, stagger:0.2, ease:"power3.out",
+    scrollTrigger:{trigger:'.isa-box',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.isa-formula',{
+    opacity:0, x:-20, duration:0.7, stagger:0.15, ease:"power3.out",
+    scrollTrigger:{trigger:'.isa-formulas',start:"top 80%",toggleActions:"play none none reverse"}
+  });
+
+  /* Validation */
+  gsap.from('.val-table tbody tr',{
+    opacity:0, x:-20, duration:0.6, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.val-table',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.val-test',{
+    opacity:0, y:30, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.val-test',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.ex-card',{
+    opacity:0, y:30, duration:0.8, stagger:0.15, ease:"power3.out",
+    scrollTrigger:{trigger:'.exercises',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Web · Python → Web */
+  gsap.from('.bridge-side',{
+    opacity:0, y:30, duration:0.9, stagger:0.18, ease:"power3.out",
+    scrollTrigger:{trigger:'.bridge',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.bridge-arrow',{
+    opacity:0, scale:0.6, duration:1, ease:"back.out(1.6)", delay:0.3,
+    scrollTrigger:{trigger:'.bridge',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.translate-prompt',{
+    opacity:0, y:36, duration:1, ease:"power3.out",
+    scrollTrigger:{trigger:'.translate-prompt',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.demo-wrap',{
+    opacity:0, y:40, duration:1.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.demo-wrap',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.gh-step',{
+    opacity:0, y:30, duration:0.7, stagger:0.12, ease:"power3.out",
+    scrollTrigger:{trigger:'.gh-steps',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.utils.toArray('#web .callout').forEach(c => {
+    gsap.from(c,{
+      opacity:0, x:-24, duration:0.9, ease:"power3.out",
+      scrollTrigger:{trigger:c,start:"top 88%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Closing */
+  gsap.from('.closing h2',{
+    opacity:0, y:40, duration:1.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.closing',start:"top 78%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.closing .next',{
+    opacity:0, y:30, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.closing .next',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.motto',{
+    opacity:0, scale:0.95, duration:1.2, ease:"power3.out",
+    scrollTrigger:{trigger:'.motto',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.signature',{
+    opacity:0, y:24, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.signature',start:"top 92%",toggleActions:"play none none reverse"}
+  });
+
+  /* Background fades */
+  gsap.to('body',{
+    backgroundColor:"#080f10",
+    scrollTrigger:{trigger:document.body,start:"top top",end:"bottom bottom",scrub:true}
+  });
+
+  /* Rail + HUD */
+  const sections = [
+    {id:"hero",       label:"00 · INCIPIT"},
+    {id:"why",        label:"01 · PERCHÉ"},
+    {id:"pact",       label:"02 · PATTO"},
+    {id:"planner",    label:"03 · PLANNER"},
+    {id:"lesson",     label:"04 · LEZIONE"},
+    {id:"ai",         label:"05 · DIALOGO IA"},
+    {id:"anatomy",    label:"06 · ANATOMIA"},
+    {id:"isa",        label:"07 · ISA"},
+    {id:"script",     label:"08 · SCRIPT"},
+    {id:"validation", label:"09 · VALIDAZIONE"},
+    {id:"web",        label:"10 · PYTHON → WEB"},
+    {id:"closing",    label:"11 · OLTRE"},
+  ];
+  const railNodes = document.querySelectorAll('.rail .node');
+  const hudSec = document.getElementById('hud-section');
+  const hudPrg = document.getElementById('hud-progress');
+
+  sections.forEach((s)=>{
+    ScrollTrigger.create({
+      trigger:`#${s.id}`,
+      start:"top 50%",
+      end:"bottom 50%",
+      onToggle:self=>{
+        if(self.isActive){
+          railNodes.forEach(n=>n.classList.toggle('active', n.dataset.target===s.id));
+          hudSec.textContent = "SEC · " + s.label;
+        }
+      }
+    });
+  });
+
+  railNodes.forEach(n=>{
+    n.addEventListener('click',()=>{
+      const t = document.getElementById(n.dataset.target);
+      if(t) lenis.scrollTo(t, {offset:-60, duration:1.4});
+    });
+  });
+
+  lenis.on('scroll', ({progress}) => {
+    hudPrg.textContent = "PRG · " + Math.round(progress*100) + "%";
+  });
+
+  setTimeout(()=>ScrollTrigger.refresh(), 600);
+});
+</script>
+
+</body>
+</html>
