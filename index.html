@@ -524,6 +524,7 @@ body {
 
 .lesson-status.live    { color: var(--success); }
 .lesson-status.planned { color: var(--text-faint); }
+.lesson-status.exercise { color: var(--warn); }
 
 .lesson-toggle {
   font-family: var(--mono);
@@ -782,6 +783,118 @@ body {
   text-transform: none;
   letter-spacing: 0;
   font-family: var(--body);
+}
+
+/* Esercitazione integrata — body minimale, senza griglia studenti.
+   Layout a due colonne: a sinistra il contesto, a destra il CTA. */
+.exercise-body {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 36px;
+  padding: 24px 0 8px;
+  align-items: start;
+}
+
+.exercise-body .ex-text {
+  font-size: 0.98rem;
+  color: var(--text-dim);
+  line-height: 1.65;
+}
+
+.exercise-body .ex-text strong { color: var(--text); }
+.exercise-body .ex-text em     { color: var(--warn); font-style: italic; }
+
+.exercise-body .ex-meta {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.exercise-body .ex-meta span {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+}
+
+/* CTA per aprire il capitolato — coerente con .handout-cta ma con tono
+   "esercitazione" (giallo invece di arancio) e layout verticale */
+.exercise-cta {
+  display: block;
+  padding: 26px 28px;
+  background: linear-gradient(135deg,
+              rgba(255, 214, 0, 0.08) 0%,
+              rgba(255, 214, 0, 0.02) 100%);
+  border: 1px solid rgba(255, 214, 0, 0.32);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.25s;
+}
+
+.exercise-cta:hover {
+  background: linear-gradient(135deg,
+              rgba(255, 214, 0, 0.14) 0%,
+              rgba(255, 214, 0, 0.04) 100%);
+  border-color: var(--warn);
+  transform: translateY(-1px);
+}
+
+.exercise-cta:hover .ex-cta-arrow {
+  transform: translateX(4px);
+}
+
+.exercise-cta .ex-cta-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--warn);
+  margin-bottom: 14px;
+}
+
+.exercise-cta .ex-cta-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-bottom: 14px;
+  line-height: 1.3;
+}
+
+.exercise-cta .ex-cta-desc {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+
+.exercise-cta .ex-cta-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 214, 0, 0.18);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.exercise-cta .ex-cta-arrow {
+  font-family: var(--mono);
+  font-size: 18px;
+  transition: transform 0.25s;
+}
+
+@media (max-width: 900px) {
+  .exercise-body { grid-template-columns: 1fr; gap: 24px; }
 }
 
 /* =========================================================
@@ -1197,6 +1310,27 @@ const LESSONS = [
       { name: 'Vettese Giacomo',     url: null },
     ],
   },
+  {
+    code: 'ES. 01',
+    title: 'Calcolatore di condizioni di volo — esercitazione integrata',
+    date: 'Lezioni 01–03 · approfondimento',
+    status: 'exercise',
+    handout: 'appunti/esercitazione-integrata.html',
+    summary: `Materiale di approfondimento che <strong>mette in pratica
+      contemporaneamente</strong> i tre temi delle lezioni precedenti:
+      atmosfera ISA (L01), conversioni di unità (L02) e strutture di controllo
+      (L03). Gli studenti devono progettare — su carta, prima di qualsiasi
+      prompt — un calcolatore di condizioni di volo che accetti quota e
+      velocità, restituisca pressione, densità, numero di Mach e Reynolds,
+      e classifichi il regime di volo (subsonico, transonico, supersonico,
+      ipersonico) con i relativi <em>if/elif/else</em>. Il documento
+      contiene la specifica tecnica, sette casi di prova con valori
+      attesi, una rubric di valutazione su cento punti e una guida al
+      debugging. <em>Nessuna scorciatoia è ammessa.</em>`,
+    topics: ['Atmosfera ISA', 'Conversioni di unità', 'if / elif / else', 'Casi di prova', 'Debug', 'Rubric · 100 pt'],
+    duration: 'da svolgere a casa',
+    students: null,
+  },
 ];
 
 /* =========================================================
@@ -1207,8 +1341,10 @@ function renderLessons() {
   container.innerHTML = '';
 
   LESSONS.forEach((lez, idx) => {
-    const liveCount    = lez.students.filter(s => s.url).length;
-    const pendingCount = lez.students.length - liveCount;
+    // Conteggi solo per lezioni con array studenti valido
+    const hasStudents  = Array.isArray(lez.students);
+    const liveCount    = hasStudents ? lez.students.filter(s => s.url).length : 0;
+    const pendingCount = hasStudents ? lez.students.length - liveCount        : 0;
 
     const article = document.createElement('article');
     article.className = 'lesson fade-in';
@@ -1217,21 +1353,37 @@ function renderLessons() {
     // Apriamo di default solo la prima lezione "live"
     if (idx === 0 && lez.status === 'live') article.classList.add('open');
 
+    // Etichetta di stato: tre varianti (live · planned · exercise)
+    const statusLabels = {
+      live:     '● online',
+      planned:  '○ planned',
+      exercise: '◆ esercitazione',
+    };
+    const statusLabel = statusLabels[lez.status] || '○ planned';
+
+    // Selezione del renderer in base allo stato
+    let bodyHtml;
+    if (lez.status === 'live') {
+      bodyHtml = renderLessonBody(lez, liveCount, pendingCount);
+    } else if (lez.status === 'exercise') {
+      bodyHtml = renderExerciseBody(lez);
+    } else {
+      bodyHtml = renderPlaceholder();
+    }
+
     article.innerHTML = `
       <header class="lesson-header" onclick="toggleLesson(this.parentElement)">
         <div class="lesson-code">${lez.code}</div>
         <div class="lesson-title">${lez.title}</div>
         <div class="lesson-date">${lez.date}</div>
         <div class="lesson-status ${lez.status}">
-          ${lez.status === 'live' ? '● online' : '○ planned'}
+          ${statusLabel}
         </div>
         <div class="lesson-toggle">+</div>
       </header>
       <div class="lesson-body">
         <div class="lesson-body-inner">
-          ${lez.status === 'live'
-            ? renderLessonBody(lez, liveCount, pendingCount)
-            : renderPlaceholder()}
+          ${bodyHtml}
         </div>
       </div>
     `;
@@ -1239,7 +1391,7 @@ function renderLessons() {
     container.appendChild(article);
   });
 
-  // Aggiorno il contatore in alto
+  // Aggiorno il contatore in alto (solo lezioni vere e proprie, non esercitazioni)
   const liveLessons = LESSONS.filter(l => l.status === 'live').length;
   document.getElementById('lessonCount').textContent =
     String(liveLessons).padStart(2, '0');
@@ -1303,6 +1455,37 @@ function renderLessonBody(lez, liveCount, pendingCount) {
     <div class="lesson-stats">
       <span>Pubblicati: <strong>${liveCount}</strong> / ${lez.students.length}</span>
       <span>In attesa: <strong>${pendingCount}</strong></span>
+    </div>
+  `;
+}
+
+/* Render dedicato per le esercitazioni integrate: niente griglia studenti,
+   niente contatore. Due colonne: contesto a sinistra, CTA capitolato a destra. */
+function renderExerciseBody(lez) {
+  const topicsHtml = lez.topics
+    .map(t => `<span>${t}</span>`)
+    .join('');
+
+  return `
+    <div class="exercise-body">
+      <div class="ex-text">
+        ${lez.summary}
+        <div class="ex-meta">${topicsHtml}</div>
+      </div>
+
+      <a class="exercise-cta" href="${lez.handout}" target="_blank" rel="noopener">
+        <div class="ex-cta-tag">◆ Capitolato tecnico</div>
+        <div class="ex-cta-title">Apri la specifica completa</div>
+        <div class="ex-cta-desc">
+          Quattro fasi obbligatorie, sette casi di prova, rubric su cento
+          punti e guida al debugging. Da svolgere autonomamente, in vista
+          della restituzione in classe.
+        </div>
+        <div class="ex-cta-action">
+          <span>Vai al documento</span>
+          <span class="ex-cta-arrow">→</span>
+        </div>
+      </a>
     </div>
   `;
 }
