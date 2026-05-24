@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Lezione 3 — Strutture di Controllo in Python</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+
+<style>
+:root {
+  --gold:   #c8a96e;
+  --silver: #8fa3b8;
+  --cyan:   #00d4ff;
+  --orange: #ff6b35;
+  --green:  #00e676;
+  --yellow: #ffd600;
+  --purple: #c084fc;
+  --pink:   #ec4899;
+
+  --serif:  'Cormorant Garamond', Georgia, serif;
+  --mono:   'DM Mono', monospace;
+  --sans:   'DM Sans', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  background: #0a0a12;
+  color: rgba(255,255,255,0.88);
+  font-family: var(--sans);
+  font-weight: 300;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ─── CURSOR ─── */
+#cursor-dot {
+  position: fixed; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--gold);
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .2s, height .2s;
+  mix-blend-mode: screen;
+}
+#cursor-ring {
+  position: fixed; width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,169,110,0.4);
+  pointer-events: none; z-index: 9998;
+  transform: translate(-50%,-50%);
+  transition: width .35s cubic-bezier(.25,.46,.45,.94),
+              height .35s cubic-bezier(.25,.46,.45,.94),
+              border-color .35s;
+}
+body:has(a:hover) #cursor-ring,
+body:has(button:hover) #cursor-ring {
+  width: 56px; height: 56px;
+  border-color: rgba(200,169,110,0.7);
+}
+
+#bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+#grain {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  animation: grain-shift 0.3s steps(1) infinite;
+}
+@keyframes grain-shift {
+  0%{transform:translate(0,0)} 10%{transform:translate(-2%,-3%)} 20%{transform:translate(3%,1%)}
+  30%{transform:translate(-1%,4%)} 40%{transform:translate(2%,-1%)} 50%{transform:translate(-3%,2%)}
+  60%{transform:translate(1%,-2%)} 70%{transform:translate(-2%,3%)} 80%{transform:translate(3%,-3%)}
+  90%{transform:translate(-1%,1%)} 100%{transform:translate(2%,2%)}
+}
+
+main { position: relative; z-index: 2; }
+
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--gold), #e8c888, var(--gold));
+  z-index: 100;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(200,169,110,0.6);
+}
+
+#nav-dots {
+  position: fixed; right: 28px; top: 50%;
+  transform: translateY(-50%);
+  z-index: 100; display: flex; flex-direction: column; gap: 12px;
+}
+.nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background .3s, transform .3s;
+}
+.nav-dot.active { background: var(--gold); transform: scale(1.5); }
+
+/* ─── SECTIONS ─── */
+.scene {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10vh 6vw;
+  position: relative; overflow: hidden;
+}
+.scene::before {
+  content: '';
+  position: absolute;
+  left: 6vw; right: 6vw; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.15), transparent);
+}
+.scene-inner { max-width: 880px; width: 100%; }
+
+/* HERO */
+#hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 0 5vw; position: relative;
+}
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: .65rem;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0; transform: translateY(20px);
+  margin-bottom: 1.8rem;
+}
+.hero-title {
+  font-family: var(--serif);
+  font-size: clamp(3.5rem, 9vw, 8rem);
+  font-weight: 300;
+  line-height: .95;
+  letter-spacing: -.02em;
+  opacity: 0; transform: translateY(40px);
+}
+.hero-title em {
+  font-style: italic;
+  color: var(--gold);
+  display: block;
+}
+.hero-subtitle {
+  font-size: clamp(.85rem, 1.8vw, 1.05rem);
+  color: rgba(255,255,255,0.45);
+  font-weight: 300;
+  max-width: 560px;
+  margin-top: 2rem;
+  line-height: 1.8;
+  opacity: 0; transform: translateY(20px);
+}
+.hero-meta {
+  margin-top: 3rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: 0;
+}
+.scroll-hint {
+  position: absolute; bottom: 6vh; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  opacity: 0; cursor: pointer;
+}
+.scroll-hint span {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+.scroll-line {
+  width: 1px; height: 48px;
+  background: linear-gradient(180deg, rgba(200,169,110,0.6), transparent);
+  animation: scroll-pulse 2s ease-in-out infinite;
+}
+@keyframes scroll-pulse {
+  0%,100% { transform: scaleY(1); opacity: .6; }
+  50% { transform: scaleY(.5); opacity: .2; }
+}
+
+/* SCENE LABELS */
+.scene-label {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+  font-size: .6rem;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.4rem;
+  opacity: 0;
+}
+.scene-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px; height: 1px;
+  background: var(--gold);
+}
+
+.scene-title {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  margin-bottom: 1.6rem;
+  opacity: 0; transform: translateY(30px);
+}
+.scene-title em { font-style: italic; color: var(--gold); }
+
+.scene-body {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.85;
+  max-width: 640px;
+  font-weight: 300;
+  opacity: 0; transform: translateY(20px);
+}
+.scene-body strong { color: rgba(255,255,255,0.88); font-weight: 500; }
+
+/* ─── CONCEPT GRID — 3 strutture di controllo ─── */
+.concept-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-top: 2.5rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+@media (max-width: 700px) { .concept-grid { grid-template-columns: 1fr; } }
+
+.concept-cell {
+  background: rgba(10,10,18,0.75);
+  padding: 1.5rem 1.4rem;
+  position: relative;
+  opacity: 0; transform: translateY(16px);
+  backdrop-filter: blur(8px);
+  border-top: 3px solid;
+}
+.concept-cell.c1 { border-top-color: var(--cyan); }
+.concept-cell.c2 { border-top-color: var(--orange); }
+.concept-cell.c3 { border-top-color: var(--green); }
+
+.concept-cell::after {
+  content: attr(data-symbol);
+  position: absolute;
+  right: 14px; top: 8px;
+  font-family: var(--mono);
+  font-size: 2.6rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.06);
+  line-height: 1;
+  pointer-events: none;
+}
+.concept-tag {
+  font-family: var(--mono);
+  font-size: .56rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .45rem;
+}
+.c1 .concept-tag { color: var(--cyan); }
+.c2 .concept-tag { color: var(--orange); }
+.c3 .concept-tag { color: var(--green); }
+.concept-name {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: .4rem;
+}
+.concept-desc {
+  font-size: .85rem;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.65;
+}
+
+/* ─── CODE BLOCK ─── */
+.code-block {
+  margin-top: 2rem;
+  background: rgba(5,10,20,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 3px solid var(--cyan);
+  border-radius: 4px;
+  padding: 1.3rem 1.6rem;
+  font-family: var(--mono);
+  font-size: .82rem;
+  line-height: 1.85;
+  color: rgba(255,255,255,0.7);
+  opacity: 0; transform: translateY(16px);
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow-x: auto;
+}
+.code-block::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: -10px; left: 18px;
+  font-size: .55rem;
+  letter-spacing: .2em;
+  color: var(--cyan);
+  background: #0a0a12;
+  padding: 2px 10px;
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: 2px;
+  font-family: var(--mono);
+}
+.code-block pre {
+  font-family: var(--mono);
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+.code-block .kw  { color: var(--orange); font-weight: 500; }   /* keyword: if, for, while, def */
+.code-block .fn  { color: var(--cyan); }                        /* function call */
+.code-block .num { color: var(--yellow); }                      /* numeric */
+.code-block .str { color: #86efac; }                            /* string */
+.code-block .cmt { color: rgba(200,169,110,0.55); font-style: italic; }
+.code-block .var { color: #f9a8d4; }                            /* variable */
+.code-block .op  { color: rgba(255,255,255,0.5); }              /* operators */
+
+/* code-block colored variants */
+.code-block.if    { border-left-color: var(--cyan); }
+.code-block.for   { border-left-color: var(--orange); }
+.code-block.while { border-left-color: var(--green); }
+.code-block.full  { border-left-color: var(--purple); }
+
+/* ─── COMPARE: PSEUDOCODICE | PYTHON ─── */
+.compare-pseudo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 2rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+  opacity: 0; transform: translateY(20px);
+}
+@media (max-width: 700px) { .compare-pseudo { grid-template-columns: 1fr; } }
+
+.cp-cell {
+  background: rgba(5,8,14,0.85);
+  padding: 1.3rem 1.5rem;
+  backdrop-filter: blur(8px);
+}
+.cp-cell .cp-head {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .8rem;
+}
+.cp-cell.pseudo .cp-head { color: var(--silver); }
+.cp-cell.python .cp-head { color: var(--cyan); }
+.cp-cell pre {
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.85;
+  color: rgba(255,255,255,0.65);
+  white-space: pre;
+  margin: 0;
+}
+.cp-cell .kw  { color: var(--orange); font-weight: 500; }
+.cp-cell .cmt { color: rgba(200,169,110,0.55); font-style: italic; }
+.cp-cell .str { color: #86efac; }
+.cp-cell .num { color: var(--yellow); }
+
+/* ─── CALLOUT ─── */
+.callout {
+  margin-top: 1.6rem;
+  padding: 1.2rem 1.6rem;
+  border-left: 2px solid;
+  border-radius: 0 4px 4px 0;
+  opacity: 0; transform: translateX(-16px);
+  backdrop-filter: blur(8px);
+}
+.callout-title {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+}
+.callout p { font-size: .92rem; color: rgba(255,255,255,0.6); line-height: 1.75; margin: 0; }
+.callout p + p { margin-top: .55rem; }
+.callout p strong { color: rgba(255,255,255,0.9); font-weight: 500; }
+
+.callout.gold   { background: rgba(200,169,110,0.06); border-color: var(--gold); }
+.callout.cyan   { background: rgba(0,212,255,0.06);   border-color: var(--cyan); }
+.callout.orange { background: rgba(255,107,53,0.06);  border-color: var(--orange); }
+.callout.green  { background: rgba(0,230,118,0.06);   border-color: var(--green); }
+.callout.yellow { background: rgba(255,214,0,0.07);   border-color: var(--yellow); }
+.callout.purple { background: rgba(192,132,252,0.06); border-color: var(--purple); }
+.callout.red    { background: rgba(248,113,113,0.07); border-color: #f87171; }
+
+.callout.gold   .callout-title { color: var(--gold); }
+.callout.cyan   .callout-title { color: var(--cyan); }
+.callout.orange .callout-title { color: var(--orange); }
+.callout.green  .callout-title { color: var(--green); }
+.callout.yellow .callout-title { color: var(--yellow); }
+.callout.purple .callout-title { color: var(--purple); }
+.callout.red    .callout-title { color: #f87171; }
+
+/* ─── INDENT VISUAL (mostra l'importanza dell'indentazione) ─── */
+.indent-demo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-top: 2rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  opacity: 0; transform: translateY(20px);
+}
+@media (max-width: 640px) { .indent-demo { grid-template-columns: 1fr; } }
+.id-bad, .id-good {
+  padding: 1.2rem 1.4rem;
+  backdrop-filter: blur(8px);
+}
+.id-bad  { background: rgba(239,68,68,0.06); }
+.id-good { background: rgba(16,185,129,0.06); }
+.id-head {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .8rem;
+}
+.id-bad  .id-head { color: #f87171; }
+.id-good .id-head { color: #34d399; }
+.id-bad  pre, .id-good pre {
+  font-family: var(--mono);
+  font-size: .78rem;
+  line-height: 1.85;
+  margin: 0;
+  white-space: pre;
+}
+.id-bad  pre { color: rgba(248,113,113,0.8); }
+.id-good pre { color: rgba(52,211,153,0.85); }
+
+/* ─── OPERATOR PILLS ─── */
+.operator-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 1.5rem;
+}
+.op-pill {
+  font-family: var(--mono);
+  font-size: .82rem;
+  padding: .4rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0,212,255,0.3);
+  background: rgba(0,212,255,0.05);
+  color: var(--cyan);
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  opacity: 0;
+  transform: translateY(8px);
+}
+.op-pill span {
+  font-family: var(--sans);
+  font-size: .68rem;
+  color: rgba(255,255,255,0.5);
+}
+
+/* ─── STEPS / CYCLE ─── */
+.cycle-row {
+  display: flex; gap: 0;
+  margin-top: 2.2rem;
+  position: relative;
+}
+.cycle-row::before {
+  content: '';
+  position: absolute;
+  top: 36px; left: 32px; right: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.25), transparent);
+  z-index: 0;
+}
+@media (max-width: 700px) { .cycle-row { flex-direction: column; gap: 1px; } .cycle-row::before { display: none; } }
+
+.cycle-step {
+  flex: 1;
+  padding: 1.5rem 1.1rem 1.3rem;
+  background: rgba(10,10,18,0.75);
+  border: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+  opacity: 0; transform: translateY(20px);
+  backdrop-filter: blur(8px);
+  position: relative; z-index: 1;
+  transition: background .3s, border-color .3s;
+}
+.cycle-step:hover { background: rgba(200,169,110,0.05); border-color: rgba(200,169,110,0.2); }
+.c-icon { font-size: 1.4rem; display: block; margin-bottom: .55rem; }
+.c-n {
+  font-family: var(--mono);
+  font-size: .55rem;
+  color: var(--gold);
+  letter-spacing: .18em;
+  margin-bottom: .35rem;
+}
+.c-title {
+  font-family: var(--serif);
+  font-size: .98rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: .35rem;
+}
+.c-desc { font-size: .78rem; color: rgba(255,255,255,0.4); line-height: 1.55; }
+
+/* ─── PROMPT BOX ─── */
+.prompt-box {
+  margin-top: 2rem;
+  background: rgba(5,12,24,0.88);
+  border: 1px solid rgba(192,132,252,0.3);
+  border-radius: 4px;
+  padding: 1.7rem 1.9rem;
+  position: relative;
+  opacity: 0; transform: translateY(20px);
+  backdrop-filter: blur(12px);
+  cursor: copy;
+  transition: border-color .3s;
+}
+.prompt-box:hover { border-color: rgba(192,132,252,0.55); }
+.prompt-box::before {
+  content: 'PROMPT — doppio clic per copiare';
+  position: absolute;
+  top: -10px; left: 18px;
+  font-family: var(--mono);
+  font-size: .55rem;
+  letter-spacing: .2em;
+  color: var(--purple);
+  background: #0a0a12;
+  padding: 2px 10px;
+  border: 1px solid rgba(192,132,252,0.3);
+  border-radius: 2px;
+}
+.prompt-box pre {
+  font-family: var(--mono);
+  font-size: .8rem;
+  line-height: 1.85;
+  color: rgba(134,239,172,0.88);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+@keyframes flash-purple {
+  0% { border-color: var(--purple); box-shadow: 0 0 22px rgba(192,132,252,0.4); }
+  100% { border-color: rgba(192,132,252,0.3); box-shadow: none; }
+}
+.prompt-box.copied { animation: flash-purple .7s ease forwards; }
+
+/* ─── EXERCISES GRID ─── */
+.exercises-grid {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+@media (max-width: 640px) { .exercises-grid { grid-template-columns: 1fr; } }
+.ex-cell {
+  background: rgba(10,10,18,0.75);
+  padding: 1.4rem 1.5rem;
+  backdrop-filter: blur(8px);
+  opacity: 0; transform: translateY(14px);
+  border-top: 3px solid;
+}
+.ex-cell.lv1 { border-top-color: var(--green); }
+.ex-cell.lv2 { border-top-color: var(--cyan); }
+.ex-cell.lv3 { border-top-color: var(--orange); }
+.ex-cell.lv4 { border-top-color: var(--purple); }
+.ex-tag {
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: .45rem;
+  display: block;
+}
+.ex-cell.lv1 .ex-tag { color: var(--green); }
+.ex-cell.lv2 .ex-tag { color: var(--cyan); }
+.ex-cell.lv3 .ex-tag { color: var(--orange); }
+.ex-cell.lv4 .ex-tag { color: var(--purple); }
+.ex-title {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+  margin-bottom: .4rem;
+}
+.ex-desc {
+  font-size: .82rem;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+}
+
+/* ─── CHECKLIST FOOTER ─── */
+#footer {
+  min-height: 40vh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 6rem 5vw;
+  position: relative; z-index: 2;
+}
+#footer::before {
+  content: '';
+  position: absolute;
+  left: 10%; right: 10%; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,169,110,0.25), transparent);
+}
+.footer-inner { opacity: 0; max-width: 780px; }
+
+.footer-mission {
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  font-weight: 300;
+  letter-spacing: -.02em;
+  line-height: 1;
+  margin-bottom: .3rem;
+  color: rgba(255,255,255,0.92);
+}
+.footer-mission em { font-style: italic; color: var(--green); }
+
+.checklist {
+  margin-top: 2rem;
+  list-style: none;
+  display: flex; flex-direction: column;
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.checklist li {
+  background: rgba(10,10,18,0.75);
+  padding: 1rem 1.4rem;
+  display: flex; align-items: center; gap: 1rem;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  text-align: left;
+  font-weight: 400;
+  color: rgba(255,255,255,0.75);
+  backdrop-filter: blur(8px);
+  transition: background .3s, color .3s;
+}
+.checklist li:hover {
+  background: rgba(0,230,118,0.06);
+  color: rgba(255,255,255,0.95);
+}
+.checklist li .ck-mark {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(0,230,118,0.12);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+
+.footer-meta {
+  margin-top: 2rem;
+  font-family: var(--mono);
+  font-size: .65rem;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  line-height: 2;
+}
+.footer-next {
+  margin-top: 2rem;
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--gold);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .scene { padding: 8vh 5vw; }
+  #nav-dots { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+<canvas id="bg-canvas"></canvas>
+<div id="grain"></div>
+<div id="progress"></div>
+
+<nav id="nav-dots">
+  <div class="nav-dot active" data-target="hero"></div>
+  <div class="nav-dot" data-target="s0"></div>
+  <div class="nav-dot" data-target="s1"></div>
+  <div class="nav-dot" data-target="s2"></div>
+  <div class="nav-dot" data-target="s3"></div>
+  <div class="nav-dot" data-target="s4"></div>
+  <div class="nav-dot" data-target="s5"></div>
+  <div class="nav-dot" data-target="s6"></div>
+  <div class="nav-dot" data-target="s7"></div>
+  <div class="nav-dot" data-target="s8"></div>
+  <div class="nav-dot" data-target="s9"></div>
+  <div class="nav-dot" data-target="s10"></div>
+</nav>
+
+<main>
+
+<section id="hero">
+  <div class="hero-eyebrow">Lezione 03 · Costruzioni Aeronautiche · Modulo Python</div>
+  <h1 class="hero-title">
+    Strutture di<br>
+    <em>Controllo</em>
+  </h1>
+  <p class="hero-subtitle">Le tre parole che danno al programma il potere di decidere, ripetere e fermarsi: <strong>if</strong>, <strong>for</strong>, <strong>while</strong>. Con esempi calati nell'aerodinamica reale.</p>
+  <div class="hero-meta">
+    Prof. Ing. Biagio Raucci &nbsp;·&nbsp; 60 minuti &nbsp;·&nbsp; A.S. 2024/25
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    <span>Scorri</span>
+  </div>
+</section>
+
+<section class="scene" id="s0">
+  <div class="scene-inner">
+    <div class="scene-label">Atto I — Il problema</div>
+    <h2 class="scene-title">Un programma che esegue<br><em>sempre la stessa cosa</em><br>è solo una calcolatrice</h2>
+    <p class="scene-body">Finora i nostri script Python hanno fatto una cosa sola: calcolare. Ricevono input, applicano formule, restituiscono output. Sempre uguali. Ma un programma <strong>vero</strong> deve fare di più: deve <em>decidere</em>, deve <em>ripetere</em>, deve <em>fermarsi</em> quando un'esigenza è soddisfatta. Esattamente come fa un pilota nella checklist pre-volo.</p>
+
+    <div class="callout gold">
+      <div class="callout-title">✈️ Analogia aeronautica</div>
+      <p>Un pilota legge la checklist e <strong>decide</strong>: se i flap sono al 15%, prosegue; altrimenti li corregge. <strong>Ripete</strong> il controllo per ogni superficie mobile. <strong>Si ferma</strong> quando la checklist è completa. Queste tre azioni — decidere, ripetere, fermarsi — sono esattamente le strutture di controllo che impareremo oggi.</p>
+    </div>
+
+    <div class="concept-grid">
+      <div class="concept-cell c1" data-symbol="?">
+        <span class="concept-tag">Decidere</span>
+        <div class="concept-name">if / else</div>
+        <div class="concept-desc">"<strong>SE</strong> la velocità è sotto V_stall, <strong>ALLORA</strong> avvisa il pilota."</div>
+      </div>
+      <div class="concept-cell c2" data-symbol="↻">
+        <span class="concept-tag">Ripetere</span>
+        <div class="concept-name">for</div>
+        <div class="concept-desc">"<strong>PER</strong> ogni punto del profilo NACA, calcola la coordinata y."</div>
+      </div>
+      <div class="concept-cell c3" data-symbol="∞">
+        <span class="concept-tag">Fermarsi</span>
+        <div class="concept-name">while</div>
+        <div class="concept-desc">"<strong>FINCHÉ</strong> la portanza non bilancia il peso, aumenta l'angolo d'attacco."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s1">
+  <div class="scene-inner">
+    <div class="scene-label">Atto II — Regola d'oro</div>
+    <h2 class="scene-title">In Python, gli <em>spazi</em><br>contano davvero</h2>
+    <p class="scene-body">In altri linguaggi i blocchi di codice si delimitano con parentesi graffe. In Python si delimitano con l'<strong>indentazione</strong>: gli spazi all'inizio della riga. Tutto ciò che è "più dentro" rispetto a un <code style="font-family:var(--mono); color:var(--cyan); font-size:.9em;">if</code> o un <code style="font-family:var(--mono); color:var(--cyan); font-size:.9em;">for</code> appartiene a quel blocco. Questa non è una scelta estetica: è la sintassi.</p>
+
+    <div class="indent-demo">
+      <div class="id-bad">
+        <div class="id-head">❌ Indentazione sbagliata</div>
+<pre>quota = 11000
+if quota > 10000:
+print("Stratosfera!")  ← errore
+densita = 0.36</pre>
+      </div>
+      <div class="id-good">
+        <div class="id-head">✅ Indentazione corretta</div>
+<pre>quota = 11000
+if quota > 10000:
+    print("Stratosfera!")
+    densita = 0.36</pre>
+      </div>
+    </div>
+
+    <div class="callout red">
+      <div class="callout-title">⚠️ IndentationError</div>
+      <p>È l'errore più frequente dei principianti. Python è severissimo: <strong>4 spazi</strong> (o 1 tab, ma sempre uno solo) di rientro per ogni livello. Se mescoli tab e spazi, il programma si rifiuta di partire. Visual Studio Code e Thonny inseriscono 4 spazi automaticamente quando premi Tab.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s2">
+  <div class="scene-inner">
+    <div class="scene-label">Atto III — Decidere</div>
+    <h2 class="scene-title">if / elif / else<br>— la <em>logica</em> del pilota</h2>
+    <p class="scene-body">L'istruzione <strong>if</strong> esegue un blocco di codice <em>solo se</em> una condizione è vera. Aggiungendo <strong>elif</strong> (else-if) e <strong>else</strong> si costruisce un albero di decisione che copre tutti i casi possibili. È così che ogni avionica moderna decide cosa mostrare al pilota.</p>
+
+    <div class="code-block if" data-lang="// PYTHON · CHECK VELOCITÀ DI STALLO">
+<pre><span class="cmt"># Velocità di stallo per un aliante (in m/s)</span>
+<span class="var">V_stall</span> <span class="op">=</span> <span class="num">14.5</span>
+<span class="var">V_attuale</span> <span class="op">=</span> <span class="fn">float</span>(<span class="fn">input</span>(<span class="str">"Velocità attuale [m/s]: "</span>))
+
+<span class="kw">if</span> V_attuale <span class="op">&lt;</span> V_stall:
+    <span class="fn">print</span>(<span class="str">"⚠️ STALLO! Aumenta velocità immediatamente."</span>)
+<span class="kw">elif</span> V_attuale <span class="op">&lt;</span> <span class="num">1.3</span> <span class="op">*</span> V_stall:
+    <span class="fn">print</span>(<span class="str">"⚡ Attenzione: prossimo allo stallo (V &lt; 1.3·V_stall)"</span>)
+<span class="kw">elif</span> V_attuale <span class="op">&lt;</span> <span class="num">2.0</span> <span class="op">*</span> V_stall:
+    <span class="fn">print</span>(<span class="str">"✓ Volo livellato sicuro"</span>)
+<span class="kw">else</span>:
+    <span class="fn">print</span>(<span class="str">"🚀 Crociera"</span>)</pre>
+    </div>
+
+    <div class="operator-row">
+      <div class="op-pill">==<span>uguale</span></div>
+      <div class="op-pill">!=<span>diverso</span></div>
+      <div class="op-pill">&lt;<span>minore</span></div>
+      <div class="op-pill">&gt;<span>maggiore</span></div>
+      <div class="op-pill">&lt;=<span>min uguale</span></div>
+      <div class="op-pill">&gt;=<span>magg uguale</span></div>
+      <div class="op-pill">and<span>e</span></div>
+      <div class="op-pill">or<span>oppure</span></div>
+      <div class="op-pill">not<span>negazione</span></div>
+    </div>
+
+    <div class="callout cyan">
+      <div class="callout-title">💡 Confronto fondamentale</div>
+      <p><strong>Un singolo "="</strong> serve per <em>assegnare</em> un valore: <code style="font-family:var(--mono);color:var(--cyan);">x = 5</code>. <strong>Un doppio "=="</strong> serve per <em>confrontare</em> due valori: <code style="font-family:var(--mono);color:var(--cyan);">if x == 5:</code>. È l'errore di sintassi più subdolo: il programma non si rifiuta di partire, ma fa qualcosa di diverso da quello che pensavi.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s3">
+  <div class="scene-inner">
+    <div class="scene-label">Atto IV — Dal pensiero al codice</div>
+    <h2 class="scene-title">Pensa in <em>italiano</em>,<br>scrivi in Python</h2>
+    <p class="scene-body">Prima di scrivere il codice, scrivi lo <strong>pseudocodice</strong>: la logica in italiano. È il passaggio mentale che separa chi programma bene da chi programma a caso. La traduzione in Python diventa quasi meccanica.</p>
+
+    <div class="compare-pseudo">
+      <div class="cp-cell pseudo">
+        <div class="cp-head">Pseudocodice (italiano)</div>
+<pre><span class="cmt"># Calcolo numero di Mach</span>
+LEGGI velocità v (m/s)
+LEGGI temperatura T (K)
+
+CALCOLA velocità del suono:
+  a = √(1.4 · 287 · T)
+
+CALCOLA Mach:
+  M = v / a
+
+SE M &lt; 0.8 ALLORA
+  STAMPA "Regime subsonico"
+ALTRIMENTI SE M &lt; 1.2 ALLORA
+  STAMPA "Regime transonico"
+ALTRIMENTI
+  STAMPA "Regime supersonico"</pre>
+      </div>
+      <div class="cp-cell python">
+        <div class="cp-head">Python</div>
+<pre><span class="cmt"># Calcolo numero di Mach</span>
+v <span class="num">=</span> <span class="kw">float</span>(<span class="kw">input</span>(<span class="str">"v [m/s]: "</span>))
+T <span class="num">=</span> <span class="kw">float</span>(<span class="kw">input</span>(<span class="str">"T [K]: "</span>))
+
+<span class="cmt"># velocità del suono</span>
+a <span class="num">=</span> (<span class="num">1.4</span> * <span class="num">287</span> * T) ** <span class="num">0.5</span>
+
+<span class="cmt"># Mach</span>
+M <span class="num">=</span> v / a
+
+<span class="kw">if</span> M &lt; <span class="num">0.8</span>:
+    <span class="kw">print</span>(<span class="str">"Subsonico"</span>)
+<span class="kw">elif</span> M &lt; <span class="num">1.2</span>:
+    <span class="kw">print</span>(<span class="str">"Transonico"</span>)
+<span class="kw">else</span>:
+    <span class="kw">print</span>(<span class="str">"Supersonico"</span>)</pre>
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <div class="callout-title">🎯 La regola dei tre passi</div>
+      <p>Per ogni problema: <strong>1)</strong> scrivi cosa vuoi fare in italiano semplice; <strong>2)</strong> traducilo in pseudocodice strutturato; <strong>3)</strong> traducilo in Python. Saltando il passo 1 e il passo 2 si finisce a scrivere codice "a tentativi". Funziona forse il 30% delle volte.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s4">
+  <div class="scene-inner">
+    <div class="scene-label">Atto V — Ripetere</div>
+    <h2 class="scene-title">for — quando <em>sai</em><br>quante volte ripetere</h2>
+    <p class="scene-body">Il ciclo <strong>for</strong> esegue lo stesso blocco di istruzioni per ogni elemento di una sequenza. Per disegnare un profilo NACA con 21 punti, non scriviamo 21 righe di calcolo: scriviamo una sola istruzione che si ripete 21 volte.</p>
+
+    <div class="code-block for" data-lang="// PYTHON · TABULAZIONE PROFILO NACA">
+<pre><span class="cmt"># Genera 21 punti del profilo NACA 0012 (simmetrico, t = 0.12)</span>
+<span class="var">t</span> <span class="op">=</span> <span class="num">0.12</span>
+
+<span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">21</span>):
+    <span class="var">x</span> <span class="op">=</span> <span class="var">i</span> <span class="op">/</span> <span class="num">20</span>                       <span class="cmt"># x va da 0 a 1</span>
+    <span class="var">y</span> <span class="op">=</span> (<span class="var">t</span> <span class="op">/</span> <span class="num">0.20</span>) <span class="op">*</span> (
+        <span class="num">0.2969</span> <span class="op">*</span> <span class="var">x</span><span class="op">**</span><span class="num">0.5</span>
+        <span class="op">-</span> <span class="num">0.1260</span> <span class="op">*</span> <span class="var">x</span>
+        <span class="op">-</span> <span class="num">0.3516</span> <span class="op">*</span> <span class="var">x</span><span class="op">**</span><span class="num">2</span>
+        <span class="op">+</span> <span class="num">0.2843</span> <span class="op">*</span> <span class="var">x</span><span class="op">**</span><span class="num">3</span>
+        <span class="op">-</span> <span class="num">0.1015</span> <span class="op">*</span> <span class="var">x</span><span class="op">**</span><span class="num">4</span>
+    )
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"x = {x:.3f}   y = {y:.5f}"</span>)</pre>
+    </div>
+
+    <div class="callout orange">
+      <div class="callout-title">🔄 Cosa fa range()</div>
+      <p><code style="font-family:var(--mono);color:var(--cyan);">range(21)</code> genera la sequenza 0, 1, 2, … 20 — esattamente 21 numeri. <code style="font-family:var(--mono);color:var(--cyan);">range(5, 10)</code> genera 5, 6, 7, 8, 9 (l'estremo finale è <em>escluso</em>). <code style="font-family:var(--mono);color:var(--cyan);">range(0, 10, 2)</code> genera 0, 2, 4, 6, 8 — terzo argomento è il passo.</p>
+      <p>La variabile <code style="font-family:var(--mono);color:var(--cyan);">i</code> assume uno dopo l'altro tutti questi valori. È la nostra "rotellina contagiri".</p>
+    </div>
+
+    <div class="callout yellow">
+      <div class="callout-title">✨ f-string</div>
+      <p>La <code style="font-family:var(--mono);color:var(--cyan);">f"..."</code> è una "formatted string": permette di inserire variabili dentro un testo. <code style="font-family:var(--mono);color:var(--cyan);">{x:.3f}</code> stampa <code>x</code> con 3 decimali. Fondamentale per output leggibili in ambito tecnico.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s5">
+  <div class="scene-inner">
+    <div class="scene-label">Atto VI — Convergere</div>
+    <h2 class="scene-title">while — <em>finché</em><br>la condizione regge</h2>
+    <p class="scene-body">Il ciclo <strong>while</strong> ripete un blocco fintantoché una condizione è vera. Lo usiamo quando <em>non sappiamo a priori</em> quante iterazioni serviranno. Esempio classico: calcolo iterativo della velocità di stallo che converge per approssimazioni successive.</p>
+
+    <div class="code-block while" data-lang="// PYTHON · CONVERGENZA ITERATIVA">
+<pre><span class="cmt"># Trova V_stall tale che L = W per un aliante</span>
+<span class="var">W</span>     <span class="op">=</span> <span class="num">3500</span>      <span class="cmt"># peso [N]</span>
+<span class="var">rho</span>   <span class="op">=</span> <span class="num">1.225</span>     <span class="cmt"># densità ISA SL [kg/m³]</span>
+<span class="var">S</span>     <span class="op">=</span> <span class="num">11.5</span>      <span class="cmt"># superficie alare [m²]</span>
+<span class="var">CL_max</span> <span class="op">=</span> <span class="num">1.4</span>      <span class="cmt"># CL massimo</span>
+
+<span class="var">V</span>     <span class="op">=</span> <span class="num">10.0</span>     <span class="cmt"># tentativo iniziale [m/s]</span>
+<span class="var">passo</span> <span class="op">=</span> <span class="num">0.1</span>      <span class="cmt"># incremento [m/s]</span>
+
+<span class="kw">while</span> <span class="num">0.5</span> <span class="op">*</span> <span class="var">rho</span> <span class="op">*</span> <span class="var">V</span><span class="op">**</span><span class="num">2</span> <span class="op">*</span> <span class="var">S</span> <span class="op">*</span> <span class="var">CL_max</span> <span class="op">&lt;</span> <span class="var">W</span>:
+    <span class="var">V</span> <span class="op">+=</span> <span class="var">passo</span>
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"V_stall ≈ {V:.2f} m/s = {V*3.6:.1f} km/h"</span>)</pre>
+    </div>
+
+    <div class="callout red">
+      <div class="callout-title">🚨 Loop infinito</div>
+      <p>Il pericolo principale del <code style="font-family:var(--mono);color:var(--cyan);">while</code>: se la condizione non diventa mai falsa, il programma <strong>non si ferma più</strong>. Devi sempre assicurarti che <em>qualcosa</em> dentro il ciclo modifichi le variabili coinvolte nella condizione. Nell'esempio sopra: <code style="font-family:var(--mono);color:var(--cyan);">V += passo</code> incrementa V ad ogni giro — è ciò che garantisce la terminazione.</p>
+      <p><strong>Se il tuo programma non risponde più</strong>: premi <strong>CTRL+C</strong> nel terminale per interromperlo.</p>
+    </div>
+
+    <div class="callout green">
+      <div class="callout-title">🔧 Scorciatoie operative</div>
+      <p><code style="font-family:var(--mono);color:var(--cyan);">V += 0.1</code> equivale a <code style="font-family:var(--mono);color:var(--cyan);">V = V + 0.1</code>. Esistono anche <code style="font-family:var(--mono);color:var(--cyan);">-=</code>, <code style="font-family:var(--mono);color:var(--cyan);">*=</code>, <code style="font-family:var(--mono);color:var(--cyan);">/=</code>. Sono le scorciatoie più usate nei cicli iterativi.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s6">
+  <div class="scene-inner">
+    <div class="scene-label">Atto VII — Controllare il flusso</div>
+    <h2 class="scene-title">break e continue<br>— le <em>uscite di emergenza</em></h2>
+    <p class="scene-body">Due parole chiave per controllare cosa succede <em>dentro</em> un ciclo: <strong>break</strong> esce immediatamente dal ciclo, <strong>continue</strong> salta direttamente alla prossima iterazione. Sono le uscite di emergenza dei loop.</p>
+
+    <div class="code-block while" data-lang="// PYTHON · BREAK CON TOLLERANZA">
+<pre><span class="cmt"># Stesso calcolo di V_stall, ma con criterio di precisione</span>
+<span class="var">V</span> <span class="op">=</span> <span class="num">10.0</span>
+<span class="var">tolleranza</span> <span class="op">=</span> <span class="num">0.001</span>
+
+<span class="kw">while</span> <span class="kw">True</span>:                       <span class="cmt"># loop apparentemente infinito</span>
+    <span class="var">L</span> <span class="op">=</span> <span class="num">0.5</span> <span class="op">*</span> <span class="num">1.225</span> <span class="op">*</span> <span class="var">V</span><span class="op">**</span><span class="num">2</span> <span class="op">*</span> <span class="num">11.5</span> <span class="op">*</span> <span class="num">1.4</span>
+    <span class="kw">if</span> <span class="fn">abs</span>(<span class="var">L</span> <span class="op">-</span> <span class="num">3500</span>) <span class="op">&lt;</span> <span class="var">tolleranza</span>:
+        <span class="kw">break</span>                       <span class="cmt"># esce dal while</span>
+    <span class="var">V</span> <span class="op">+=</span> <span class="num">0.001</span>
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"V_stall = {V:.4f} m/s"</span>)</pre>
+    </div>
+
+    <div class="code-block for" data-lang="// PYTHON · CONTINUE PER SALTARE CASI">
+<pre><span class="cmt"># Calcolo Mach per varie quote, scartando quote impossibili</span>
+<span class="var">v</span> <span class="op">=</span> <span class="num">250</span>                         <span class="cmt"># velocità [m/s]</span>
+<span class="var">quote</span> <span class="op">=</span> [<span class="num">0</span>, <span class="num">3000</span>, <span class="op">-</span><span class="num">100</span>, <span class="num">9000</span>, <span class="num">15000</span>]
+
+<span class="kw">for</span> <span class="var">h</span> <span class="kw">in</span> <span class="var">quote</span>:
+    <span class="kw">if</span> <span class="var">h</span> <span class="op">&lt;</span> <span class="num">0</span>:
+        <span class="kw">continue</span>                   <span class="cmt"># salta quote negative</span>
+    <span class="var">T</span> <span class="op">=</span> <span class="num">288.15</span> <span class="op">-</span> <span class="num">0.0065</span> <span class="op">*</span> <span class="var">h</span>     <span class="cmt"># ISA</span>
+    <span class="var">a</span> <span class="op">=</span> (<span class="num">1.4</span> <span class="op">*</span> <span class="num">287</span> <span class="op">*</span> <span class="var">T</span>) <span class="op">**</span> <span class="num">0.5</span>
+    <span class="var">M</span> <span class="op">=</span> <span class="var">v</span> <span class="op">/</span> <span class="var">a</span>
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"h = {h} m   M = {M:.3f}"</span>)</pre>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s7">
+  <div class="scene-inner">
+    <div class="scene-label">Atto VIII — Esempio completo</div>
+    <h2 class="scene-title">Costruiamo una<br><em>tabella ISA</em></h2>
+    <p class="scene-body">Combiniamo le tre strutture in un programma vero: una tabella di atmosfera standard ISA dal suolo a 20 km, con avviso quando si entra in stratosfera. Tre concetti, un'unica applicazione utile per ogni studente di aerodinamica.</p>
+
+    <div class="code-block full" data-lang="// PYTHON · TABELLA ISA COMPLETA">
+<pre><span class="cmt"># ─── Parametri atmosfera standard ISA ──────────────</span>
+<span class="var">T0</span>    <span class="op">=</span> <span class="num">288.15</span>      <span class="cmt"># temperatura al suolo [K]</span>
+<span class="var">P0</span>    <span class="op">=</span> <span class="num">101325</span>      <span class="cmt"># pressione al suolo [Pa]</span>
+<span class="var">rho0</span>  <span class="op">=</span> <span class="num">1.225</span>       <span class="cmt"># densità al suolo [kg/m³]</span>
+<span class="var">L</span>     <span class="op">=</span> <span class="num">0.0065</span>      <span class="cmt"># gradiente termico troposfera [K/m]</span>
+<span class="var">g</span>     <span class="op">=</span> <span class="num">9.80665</span>     <span class="cmt"># gravità [m/s²]</span>
+<span class="var">R</span>     <span class="op">=</span> <span class="num">287.05</span>      <span class="cmt"># costante aria [J/(kg·K)]</span>
+<span class="var">h_tropopausa</span> <span class="op">=</span> <span class="num">11000</span>  <span class="cmt"># [m]</span>
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{'h [m]':&gt;8} {'T [K]':&gt;8} {'p [Pa]':&gt;10} {'ρ [kg/m³]':&gt;12}"</span>)
+<span class="fn">print</span>(<span class="str">"─"</span> <span class="op">*</span> <span class="num">42</span>)
+
+<span class="kw">for</span> <span class="var">h</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="num">0</span>, <span class="num">20001</span>, <span class="num">1000</span>):     <span class="cmt"># 0, 1000, …, 20000 m</span>
+
+    <span class="kw">if</span> <span class="var">h</span> <span class="op">&lt;=</span> <span class="var">h_tropopausa</span>:
+        <span class="cmt"># Troposfera: temperatura cala linearmente</span>
+        <span class="var">T</span> <span class="op">=</span> <span class="var">T0</span> <span class="op">-</span> <span class="var">L</span> <span class="op">*</span> <span class="var">h</span>
+        <span class="var">P</span> <span class="op">=</span> <span class="var">P0</span> <span class="op">*</span> (<span class="var">T</span><span class="op">/</span><span class="var">T0</span>)<span class="op">**</span>(<span class="var">g</span><span class="op">/</span>(<span class="var">L</span><span class="op">*</span><span class="var">R</span>))
+    <span class="kw">else</span>:
+        <span class="cmt"># Stratosfera: temperatura costante (isotermica)</span>
+        <span class="var">T_trop</span> <span class="op">=</span> <span class="var">T0</span> <span class="op">-</span> <span class="var">L</span> <span class="op">*</span> <span class="var">h_tropopausa</span>
+        <span class="var">P_trop</span> <span class="op">=</span> <span class="var">P0</span> <span class="op">*</span> (<span class="var">T_trop</span><span class="op">/</span><span class="var">T0</span>)<span class="op">**</span>(<span class="var">g</span><span class="op">/</span>(<span class="var">L</span><span class="op">*</span><span class="var">R</span>))
+        <span class="var">T</span> <span class="op">=</span> <span class="var">T_trop</span>
+        <span class="kw">import</span> <span class="fn">math</span>
+        <span class="var">P</span> <span class="op">=</span> <span class="var">P_trop</span> <span class="op">*</span> <span class="fn">math</span>.exp(<span class="op">-</span><span class="var">g</span><span class="op">*</span>(<span class="var">h</span><span class="op">-</span><span class="var">h_tropopausa</span>)<span class="op">/</span>(<span class="var">R</span><span class="op">*</span><span class="var">T</span>))
+
+    <span class="var">rho</span> <span class="op">=</span> <span class="var">P</span> <span class="op">/</span> (<span class="var">R</span> <span class="op">*</span> <span class="var">T</span>)
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{h:&gt;8} {T:&gt;8.2f} {P:&gt;10.0f} {rho:&gt;12.4f}"</span>)</pre>
+    </div>
+
+    <div class="callout purple">
+      <div class="callout-title">🎓 Cosa abbiamo usato</div>
+      <p><strong>for</strong> per scorrere le quote da 0 a 20 km · <strong>if/else</strong> per distinguere troposfera e stratosfera · <strong>f-string</strong> per formattare colonne allineate. Un esempio pedagogicamente perfetto: in 25 righe abbiamo riprodotto la prima pagina di un manuale di aerodinamica.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s8">
+  <div class="scene-inner">
+    <div class="scene-label">Atto IX — Dal terminale al browser</div>
+    <h2 class="scene-title">Da Python<br>al <em>web</em>, in un prompt</h2>
+    <p class="scene-body">Qui arriva la parte che vi piacerà di più. Lo script Python che avete appena scritto gira <strong>solo nel terminale</strong>: lo vedete solo voi. Per condividerlo, per pubblicarlo, dovete trasformarlo in HTML+JS — esattamente quello che abbiamo fatto nella Lezione 1 con il profilo NACA. Il bello? Non dovete riscrivere nulla. Chiedete all'IA.</p>
+
+    <p class="scene-body" style="margin-top:1.5rem;">Copiate il prompt qui sotto (doppio clic per copiarlo), incollate il vostro script Python alla fine, e Claude vi restituirà un singolo file <code style="font-family:var(--mono); color:var(--cyan); font-size:.9em;">index.html</code> pronto per essere caricato su GitHub Pages.</p>
+
+    <div class="prompt-box" id="prompt-convert">
+<pre>"Ho scritto questo script Python che calcola [descrivi cosa fa].
+Voglio trasformarlo in una web app: un singolo file HTML che fa
+esattamente la stessa cosa, ma con interfaccia grafica nel browser.
+
+REQUISITI:
+1. Un solo file 'index.html' — niente librerie esterne, niente file
+   separati per CSS o JS.
+2. Riproduci ESATTAMENTE la stessa logica e le stesse formule del
+   mio Python — il risultato numerico deve coincidere.
+3. Gli input del Python (input()) diventano campi modificabili
+   nella pagina (slider o input numerici).
+4. Gli output del Python (print()) diventano testo o tabella
+   visibile nella pagina, aggiornati in tempo reale al cambio degli input.
+5. Tema scuro stile aeronautico, come la Lezione Zero del corso:
+   sfondo #0b0f14, accent cyan #00d4ff, tipografia mono per i numeri.
+6. Tutte le formule fisiche del codice devono restare invariate:
+   non semplificare, non approssimare.
+7. Se il Python usa 'math', traduci in Math.* di JavaScript
+   (Math.sqrt, Math.exp, Math.pow, ecc.).
+8. Aggiungi un footer con il mio nome: [TUO NOME E COGNOME, CLASSE].
+
+ECCO IL MIO CODICE PYTHON:
+
+[INCOLLA QUI IL TUO SCRIPT]"</pre>
+    </div>
+
+    <div class="callout purple">
+      <div class="callout-title">⚡ Perché funziona</div>
+      <p>Python e JavaScript condividono il 90% della logica di base: <code style="font-family:var(--mono);color:var(--cyan);">if</code>, <code style="font-family:var(--mono);color:var(--cyan);">for</code>, <code style="font-family:var(--mono);color:var(--cyan);">while</code> esistono in entrambi con sintassi quasi identica. Le differenze sono nei dettagli: parentesi graffe invece dell'indentazione, <code style="font-family:var(--mono);color:var(--cyan);">Math.sqrt(x)</code> invece di <code style="font-family:var(--mono);color:var(--cyan);">x**0.5</code>, <code style="font-family:var(--mono);color:var(--cyan);">let</code> invece dell'assegnazione diretta. L'IA queste differenze le conosce a memoria: la traduzione è meccanica.</p>
+    </div>
+
+    <div class="callout gold">
+      <div class="callout-title">🎯 Il pattern professionale</div>
+      <p>Questo è esattamente come lavorano gli ingegneri: prototipano in Python (rapido, libero, in laboratorio) e poi <em>traducono</em> la versione finale in un linguaggio adatto alla distribuzione (JavaScript per web, C++ per performance, Rust per sicurezza). Voi state imparando lo stesso flusso, ma con l'IA che fa il lavoro pesante.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s9">
+  <div class="scene-inner">
+    <div class="scene-label">Atto X — Workflow completo</div>
+    <h2 class="scene-title">Il <em>ciclo completo</em><br>della Lezione 3</h2>
+    <p class="scene-body">Quattro passaggi che riassumono tutto quello che state imparando. Dal terminale al sito pubblico, in meno di un'ora di lavoro reale.</p>
+
+    <div class="cycle-row">
+      <div class="cycle-step">
+        <span class="c-icon">📝</span>
+        <div class="c-n">Passo 01</div>
+        <div class="c-title">Pseudocodice</div>
+        <div class="c-desc">Scrivi in italiano cosa deve fare il programma. Identifica if, for, while.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🐍</span>
+        <div class="c-n">Passo 02</div>
+        <div class="c-title">Python</div>
+        <div class="c-desc">Traduci in Python. Testa nel terminale o in Thonny. Correggi gli errori.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🤖</span>
+        <div class="c-n">Passo 03</div>
+        <div class="c-title">Prompt IA</div>
+        <div class="c-desc">Usa il prompt di conversione. Allega lo script. Ricevi index.html.</div>
+      </div>
+      <div class="cycle-step">
+        <span class="c-icon">🚀</span>
+        <div class="c-n">Passo 04</div>
+        <div class="c-title">Deploy</div>
+        <div class="c-desc">Carica su GitHub Pages (come Lezione Zero). Sito pubblico.</div>
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <div class="callout-title">🔁 Lo stesso workflow lo userai per anni</div>
+      <p>Questo ciclo — pensare in italiano, scrivere in Python, far tradurre all'IA, pubblicare — è il workflow che userai per tutti i tuoi progetti del triennio. La differenza tra uno studente che esegue i compiti e uno che produce un portfolio professionale è proprio in questo ciclo: il primo si ferma al Passo 2, il secondo arriva fino al Passo 4.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s10">
+  <div class="scene-inner">
+    <div class="scene-label">Atto XI — A casa</div>
+    <h2 class="scene-title">I tuoi <em>esercizi</em></h2>
+    <p class="scene-body">Quattro esercizi calibrati su quattro livelli di difficoltà. Per ognuno: prima scrivete lo pseudocodice, poi il Python, poi convertite in HTML con il prompt che vi ho dato. La consegna è l'URL della pagina GitHub Pages.</p>
+
+    <div class="exercises-grid">
+      <div class="ex-cell lv1">
+        <span class="ex-tag">★ Livello 1 — base</span>
+        <div class="ex-title">Calcolatore di pressione dinamica</div>
+        <div class="ex-desc">Input: velocità <em>v</em> [m/s] e densità <em>ρ</em> [kg/m³]. Output: pressione dinamica <em>q = ½ρv²</em>. Usa un <em>if</em> per avvisare se v supera 100 m/s.</div>
+      </div>
+      <div class="ex-cell lv2">
+        <span class="ex-tag">★★ Livello 2 — intermedio</span>
+        <div class="ex-title">Tabella di portanza al variare di α</div>
+        <div class="ex-desc">Genera una tabella di L per α da 0° a 15° con passo 1°. Usa un <em>for</em>. Formula: <em>L = ½ρV²S·C_L(α)</em> con <em>C_L = 0.1·α</em>.</div>
+      </div>
+      <div class="ex-cell lv3">
+        <span class="ex-tag">★★★ Livello 3 — avanzato</span>
+        <div class="ex-title">Trova V di stallo per tolleranza</div>
+        <div class="ex-desc">Usa un <em>while</em> con criterio di precisione (tolleranza 0.01 N) per trovare V tale che L = W. Usa <em>break</em> quando convergi.</div>
+      </div>
+      <div class="ex-cell lv4">
+        <span class="ex-tag">★★★★ Livello 4 — sfida</span>
+        <div class="ex-title">Profilo NACA 4-cifre con menu</div>
+        <div class="ex-desc">Input: <em>m, p, t</em>. Genera 21 punti (x, y_sup, y_inf). Usa <em>if</em> per la linea media (due rami x&lt;p e x≥p). Poi convertilo in HTML.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer id="footer">
+  <div class="footer-inner">
+    <div class="footer-mission">Lezione 3<br><em>archiviata</em></div>
+
+    <ul class="checklist">
+      <li><span class="ck-mark">✓</span> Conosci le tre strutture di controllo: if, for, while</li>
+      <li><span class="ck-mark">✓</span> Sai perché l'indentazione in Python è la sintassi stessa</li>
+      <li><span class="ck-mark">✓</span> Sai distinguere "=" (assegna) da "==" (confronta)</li>
+      <li><span class="ck-mark">✓</span> Sai usare break e continue per controllare il flusso</li>
+      <li><span class="ck-mark">✓</span> Sai trasformare uno script Python in una web app con un solo prompt</li>
+    </ul>
+
+    <div class="footer-meta">
+      Prof. Ing. Biagio Raucci<br>
+      ITIS E. Majorana · Cassino<br>
+      A.S. 2024/25 · Costruzioni Aeronautiche
+    </div>
+
+    <div class="footer-next">// Prossima lezione: liste, dizionari, e funzioni — l'organizzazione dei dati</div>
+  </div>
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   THREE.JS — fluid ink background
+══════════════════════════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+  const uniforms = {
+    uTime:       { value: 0 },
+    uMouse:      { value: new THREE.Vector2(0.5, 0.5) },
+    uMouseVel:   { value: new THREE.Vector2(0, 0) },
+    uColorA:     { value: new THREE.Color(0.04, 0.04, 0.07) },
+    uColorB:     { value: new THREE.Color(0.06, 0.08, 0.14) },
+    uColorAccent:{ value: new THREE.Color(0.20, 0.17, 0.11) },
+    uIntensity:  { value: 0.0 },
+  };
+
+  const geo = new THREE.PlaneGeometry(2, 2);
+  const mat = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform float uTime;
+      uniform vec2  uMouse;
+      uniform vec2  uMouseVel;
+      uniform vec3  uColorA;
+      uniform vec3  uColorB;
+      uniform vec3  uColorAccent;
+      uniform float uIntensity;
+      varying vec2  vUv;
+
+      vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
+      vec2 mod289(vec2 x){return x-floor(x*(1./289.))*289.;}
+      vec3 permute(vec3 x){return mod289(((x*34.)+1.)*x);}
+      float snoise(vec2 v){
+        const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+        vec2 i=floor(v+dot(v,C.yy));
+        vec2 x0=v-i+dot(i,C.xx);
+        vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
+        vec4 x12=x0.xyxy+C.xxzz;
+        x12.xy-=i1;
+        i=mod289(i);
+        vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
+        vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.);
+        m=m*m; m=m*m;
+        vec3 x2=2.*fract(p*C.www)-1.;
+        vec3 h=abs(x2)-0.5;
+        vec3 ox=floor(x2+0.5);
+        vec3 a0=x2-ox;
+        m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
+        vec3 g;
+        g.x=a0.x*x0.x+h.x*x0.y;
+        g.yz=a0.yz*x12.xz+h.yz*x12.yw;
+        return 130.*dot(m,g);
+      }
+
+      void main() {
+        vec2 uv = vUv;
+        float t = uTime * 0.12;
+        float n1 = snoise(uv * 2.8 + vec2(t * 0.3, t * 0.18));
+        float n2 = snoise(uv * 5.2 + vec2(-t * 0.25, t * 0.4) + n1 * 0.3);
+        float n3 = snoise(uv * 1.4 + vec2(t * 0.1, -t * 0.15) + n2 * 0.2);
+        float flow = (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.5 + 0.5;
+
+        vec2 md = uv - uMouse;
+        float md2 = dot(md, md);
+        float splash = exp(-md2 * 8.0) * length(uMouseVel) * 12.0;
+        float ripple = snoise(uv * 12.0 - uMouse * 5.0 + uTime * 0.5) * 0.5 + 0.5;
+        splash *= ripple;
+
+        vec3 col = mix(uColorA, uColorB, flow);
+        col = mix(col, uColorAccent, splash * uIntensity * 0.6 + flow * uIntensity * 0.15);
+
+        float vig = 1.0 - smoothstep(0.3, 1.1, length(uv - 0.5) * 1.5);
+        col *= vig;
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh);
+
+  // Palette per ogni scena
+  const sectionColors = [
+    { a:[0.04,0.04,0.07], b:[0.06,0.08,0.14], ac:[0.20,0.17,0.11] }, // hero gold
+    { a:[0.05,0.04,0.10], b:[0.08,0.07,0.18], ac:[0.18,0.14,0.28] }, // s0 violet (metaphor)
+    { a:[0.06,0.04,0.04], b:[0.12,0.06,0.06], ac:[0.22,0.10,0.10] }, // s1 red (indent error)
+    { a:[0.02,0.07,0.12], b:[0.04,0.12,0.20], ac:[0.06,0.20,0.30] }, // s2 cyan (if)
+    { a:[0.04,0.06,0.10], b:[0.07,0.10,0.16], ac:[0.12,0.16,0.24] }, // s3 blue (pseudocode)
+    { a:[0.10,0.06,0.02], b:[0.18,0.10,0.04], ac:[0.28,0.16,0.05] }, // s4 orange (for)
+    { a:[0.02,0.08,0.05], b:[0.04,0.14,0.08], ac:[0.06,0.22,0.12] }, // s5 green (while)
+    { a:[0.07,0.07,0.04], b:[0.13,0.13,0.06], ac:[0.22,0.20,0.08] }, // s6 amber (break/continue)
+    { a:[0.04,0.07,0.06], b:[0.06,0.12,0.10], ac:[0.10,0.20,0.16] }, // s7 teal (ISA)
+    { a:[0.07,0.04,0.10], b:[0.12,0.06,0.18], ac:[0.22,0.10,0.30] }, // s8 magenta (prompt)
+    { a:[0.04,0.05,0.10], b:[0.07,0.09,0.18], ac:[0.14,0.16,0.28] }, // s9 deep blue (workflow)
+    { a:[0.04,0.07,0.04], b:[0.07,0.13,0.08], ac:[0.12,0.22,0.10] }, // s10 green (exercises)
+  ];
+
+  let targetA = new THREE.Color(...sectionColors[0].a);
+  let targetB = new THREE.Color(...sectionColors[0].b);
+  let targetAC = new THREE.Color(...sectionColors[0].ac);
+
+  window.setBgPalette = function(idx) {
+    idx = Math.min(idx, sectionColors.length - 1);
+    const p = sectionColors[idx];
+    targetA.setRGB(...p.a);
+    targetB.setRGB(...p.b);
+    targetAC.setRGB(...p.ac);
+  };
+
+  let lastTime = 0;
+  function animate(ts) {
+    requestAnimationFrame(animate);
+    const dt = Math.min((ts - lastTime) / 1000, 0.05);
+    lastTime = ts;
+    uniforms.uTime.value += dt;
+    uniforms.uColorA.value.lerp(targetA, 0.025);
+    uniforms.uColorB.value.lerp(targetB, 0.025);
+    uniforms.uColorAccent.value.lerp(targetAC, 0.025);
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  let prevMouse = { x: 0.5, y: 0.5 };
+  window.addEventListener('mousemove', e => {
+    const nx = e.clientX / window.innerWidth;
+    const ny = 1 - e.clientY / window.innerHeight;
+    uniforms.uMouseVel.value.set(nx - prevMouse.x, ny - prevMouse.y);
+    uniforms.uMouse.value.set(nx, ny);
+    prevMouse = { x: nx, y: ny };
+    uniforms.uIntensity.value = Math.min(uniforms.uIntensity.value + 0.3, 1.0);
+  });
+
+  setInterval(() => {
+    uniforms.uMouseVel.value.multiplyScalar(0.85);
+    uniforms.uIntensity.value *= 0.96;
+  }, 16);
+})();
+
+/* ══════════════════════════════════════════════════════
+   LENIS smooth scroll
+══════════════════════════════════════════════════════ */
+const lenis = new Lenis({
+  duration: 1.4,
+  easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  direction: 'vertical',
+  smooth: true,
+  smoothTouch: false,
+});
+function rafCb(time) { lenis.raf(time); requestAnimationFrame(rafCb); }
+requestAnimationFrame(rafCb);
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add(time => lenis.raf(time * 1000));
+gsap.ticker.lagSmoothing(0);
+
+/* ══════════════════════════════════════════════════════
+   CURSOR
+══════════════════════════════════════════════════════ */
+const dot  = document.getElementById('cursor-dot');
+const ring = document.getElementById('cursor-ring');
+let cx = 0, cy = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; });
+(function cursorLoop() {
+  requestAnimationFrame(cursorLoop);
+  rx += (cx - rx) * 0.12;
+  ry += (cy - ry) * 0.12;
+  dot.style.left  = cx + 'px';
+  dot.style.top   = cy + 'px';
+  ring.style.left = rx + 'px';
+  ring.style.top  = ry + 'px';
+})();
+
+/* ══════════════════════════════════════════════════════
+   GSAP + SCROLLTRIGGER
+══════════════════════════════════════════════════════ */
+gsap.registerPlugin(ScrollTrigger);
+
+lenis.on('scroll', ({ progress }) => {
+  document.getElementById('progress').style.width = (progress * 100) + '%';
+});
+
+const heroTl = gsap.timeline({ delay: 0.3 });
+heroTl
+  .to('.hero-eyebrow',  { opacity:1, y:0, duration:1.2, ease:'expo.out' })
+  .to('.hero-title',    { opacity:1, y:0, duration:1.4, ease:'expo.out' }, '-=0.8')
+  .to('.hero-subtitle', { opacity:1, y:0, duration:1.2, ease:'expo.out' }, '-=0.9')
+  .to('.hero-meta',     { opacity:1, duration:1.0, ease:'power2.out' }, '-=0.6')
+  .to('.scroll-hint',   { opacity:1, duration:0.8, ease:'power2.out' }, '-=0.4');
+
+function revealScene(sectionId, paletteIdx) {
+  const section = document.querySelector(sectionId);
+  if (!section) return;
+
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top 70%',
+    onEnter:     () => window.setBgPalette(paletteIdx),
+    onEnterBack: () => window.setBgPalette(paletteIdx),
+  });
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: section,
+      start: 'top 72%',
+      end: 'bottom 20%',
+      toggleActions: 'play none none reverse',
+    }
+  });
+
+  const label = section.querySelector('.scene-label');
+  const title = section.querySelector('.scene-title');
+  const body  = section.querySelectorAll('.scene-body');
+
+  if (label) tl.to(label, { opacity:1, duration:0.6, ease:'power3.out' }, 0.05);
+  if (title) tl.to(title, { opacity:1, y:0, duration:1.0, ease:'expo.out' }, 0.15);
+  body.forEach((el, i) => tl.to(el, { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.3 + i*0.1));
+
+  const conceptCells = section.querySelectorAll('.concept-cell');
+  if (conceptCells.length) {
+    tl.to(conceptCells, { opacity:1, y:0, duration:0.7, ease:'power3.out', stagger: { amount:0.4 } }, 0.4);
+  }
+
+  const codeBlocks = section.querySelectorAll('.code-block');
+  codeBlocks.forEach((cb, i) => tl.to(cb, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4 + i*0.15));
+
+  const cmpPseudo = section.querySelector('.compare-pseudo');
+  if (cmpPseudo) tl.to(cmpPseudo, { opacity:1, y:0, duration:0.9, ease:'power3.out' }, 0.4);
+
+  const indentDemo = section.querySelector('.indent-demo');
+  if (indentDemo) tl.to(indentDemo, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.4);
+
+  const opPills = section.querySelectorAll('.op-pill');
+  if (opPills.length) {
+    tl.to(opPills, { opacity:1, y:0, duration:0.5, ease:'power3.out', stagger: { amount:0.4 } }, 0.55);
+  }
+
+  const callouts = section.querySelectorAll('.callout');
+  callouts.forEach((el, i) => tl.to(el, { opacity:1, x:0, duration:0.8, ease:'power3.out' }, 0.55 + i*0.1));
+
+  const cycleSteps = section.querySelectorAll('.cycle-step');
+  if (cycleSteps.length) {
+    tl.to(cycleSteps, { opacity:1, y:0, duration:0.7, ease:'expo.out', stagger: { amount:0.35 } }, 0.4);
+  }
+
+  const exCells = section.querySelectorAll('.ex-cell');
+  if (exCells.length) {
+    tl.to(exCells, { opacity:1, y:0, duration:0.65, ease:'power3.out', stagger: { amount:0.45 } }, 0.4);
+  }
+
+  const promptBox = section.querySelector('.prompt-box');
+  if (promptBox) tl.to(promptBox, { opacity:1, y:0, duration:0.9, ease:'expo.out' }, 0.5);
+}
+
+const scenes = [
+  ['#s0', 1], ['#s1', 2], ['#s2', 3], ['#s3', 4], ['#s4', 5],
+  ['#s5', 6], ['#s6', 7], ['#s7', 8], ['#s8', 9], ['#s9', 10], ['#s10', 11],
+];
+scenes.forEach(([id, pal]) => revealScene(id, pal));
+
+// FOOTER
+gsap.timeline({
+  scrollTrigger: { trigger:'#footer', start:'top 80%' }
+})
+.to('.footer-inner', { opacity:1, duration:1.0, ease:'power3.out' })
+.from('.footer-mission', { y:30, opacity:0, duration:1.2, ease:'expo.out' }, 0)
+.from('.checklist li',   { x:-16, opacity:0, duration:0.6, ease:'power3.out', stagger: 0.12 }, 0.3)
+.from('.footer-meta',    { opacity:0, y:10, duration:0.8, ease:'power2.out' }, '+=0.2')
+.from('.footer-next',    { opacity:0, duration:0.8, ease:'power2.out' }, '-=0.4');
+
+/* NAV DOTS */
+const navSections = ['hero','s0','s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'];
+const navDots = document.querySelectorAll('.nav-dot');
+
+navDots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    const target = document.getElementById(navSections[i]);
+    if (target) lenis.scrollTo(target, { offset: 0, duration: 1.6, easing: t => 1 - Math.pow(1-t, 4) });
+  });
+});
+
+ScrollTrigger.create({
+  trigger: 'main',
+  start: 'top top',
+  end: 'bottom bottom',
+  onUpdate: self => {
+    const prog = self.progress;
+    const idx = Math.round(prog * (navSections.length - 1));
+    navDots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+});
+
+/* COPY ON DOUBLE-CLICK */
+document.querySelectorAll('.prompt-box').forEach(block => {
+  block.addEventListener('dblclick', async () => {
+    const text = block.querySelector('pre')?.innerText?.trim() || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      block.classList.add('copied');
+      setTimeout(() => block.classList.remove('copied'), 700);
+    } catch(e) {}
+  });
+});
+
+/* SCROLL HINT CLICK */
+document.querySelector('.scroll-hint')?.addEventListener('click', () => {
+  lenis.scrollTo(document.getElementById('s0'), { duration: 1.8 });
+});
+</script>
+</body>
+</html>
