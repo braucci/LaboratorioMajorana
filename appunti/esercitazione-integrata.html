@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Esercitazione integrata · Lezioni 01–03 · Calcolatore di condizioni di volo</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#070d0e;
+  --bg-1:#0a1417;
+  --ink:#eef4f1;
+  --ink-dim:#9bb1ad;
+  --teal:#6df0d2;
+  --teal-deep:#0eaf95;
+  --gold:#f7c873;
+  --gold-deep:#d49a37;
+  --rose:#ff8a8a;
+  --line:rgba(109,240,210,0.18);
+  --line-2:rgba(247,200,115,0.22);
+  --grid:rgba(109,240,210,0.06);
+  --panel:rgba(7,13,14,0.7);
+  --panel-strong:rgba(5,10,11,0.88);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg-0);color:var(--ink);font-family:"Fraunces",serif;overflow-x:hidden}
+body{min-height:100vh;line-height:1.55}
+
+#bg-canvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+
+.grid-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+  -webkit-mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%);
+}
+.vignette{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,0.7) 100%)}
+.scanline{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,0.012) 3px,rgba(255,255,255,0.012) 4px);
+  mix-blend-mode:overlay;
+}
+
+.hud{
+  position:fixed;top:0;left:0;right:0;z-index:50;padding:14px 28px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.16em;
+  color:var(--teal);background:linear-gradient(to bottom,rgba(5,10,11,0.85),transparent);
+  border-bottom:1px solid rgba(109,240,210,0.1);text-transform:uppercase;
+}
+.hud .left{display:flex;gap:24px;align-items:center}
+.hud .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);animation:pulse 2s ease-in-out infinite}
+.hud .right{display:flex;gap:24px;color:var(--ink-dim)}
+@keyframes pulse{50%{opacity:0.35}}
+
+.rail{
+  position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:40;
+  display:flex;flex-direction:column;gap:13px;
+  font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.14em;
+}
+.rail .node{display:flex;align-items:center;gap:10px;color:var(--ink-dim);transition:color 0.4s ease;cursor:pointer}
+.rail .node .mark{width:10px;height:10px;border:1px solid var(--ink-dim);transform:rotate(45deg);transition:all 0.4s ease}
+.rail .node.active{color:var(--teal)}
+.rail .node.active .mark{background:var(--teal);border-color:var(--teal);box-shadow:0 0 16px var(--teal)}
+
+section{position:relative;z-index:10;min-height:100vh;padding:120px 8vw;display:flex;flex-direction:column;justify-content:center}
+
+.hero{min-height:100vh;justify-content:center}
+.hero .eyebrow{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.hero h1{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(48px,8vw,128px);line-height:0.95;letter-spacing:-0.02em;margin-bottom:26px;color:var(--ink)}
+.hero h1 em{font-style:italic;font-weight:400;color:var(--teal)}
+.hero h1 .stamp{font-style:normal;font-weight:500;display:block;font-family:"Space Grotesk",sans-serif;font-size:clamp(18px,3vw,36px);letter-spacing:0.05em;color:var(--gold);margin-top:14px}
+.hero .sub{font-family:"Space Grotesk",sans-serif;font-size:clamp(15px,1.4vw,18px);letter-spacing:0.02em;color:var(--ink-dim);max-width:720px;line-height:1.85}
+.hero .meta{margin-top:48px;display:flex;gap:48px;flex-wrap:wrap;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.16em;color:var(--ink-dim)}
+.hero .meta b{color:var(--teal);font-weight:400;display:block;font-size:18px;margin-top:4px;letter-spacing:0.04em}
+
+.scroll-cue{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.3em;color:var(--teal);text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px}
+.scroll-cue .line{width:1px;height:48px;background:linear-gradient(to bottom,var(--teal),transparent);animation:drop 2s ease-in-out infinite}
+@keyframes drop{0%,100%{transform:scaleY(0.4);transform-origin:top}50%{transform:scaleY(1)}}
+
+.section-head{margin-bottom:56px}
+.section-head .num{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.32em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+.section-head h2{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(38px,5.8vw,82px);line-height:1.05;letter-spacing:-0.02em;color:var(--ink);max-width:1000px}
+.section-head h2 em{font-style:italic;color:var(--teal)}
+.section-head h2 .accent{color:var(--gold);font-style:italic}
+.section-head .lead{margin-top:24px;font-family:"Space Grotesk",sans-serif;font-size:clamp(16px,1.4vw,19px);color:var(--ink-dim);max-width:780px;line-height:1.8}
+
+/* ============== PATTO ============== */
+.pact{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);margin-top:32px}
+.pact .col{padding:36px 30px;border-right:1px solid var(--line)}
+.pact .col:last-child{border-right:none;background:linear-gradient(135deg,rgba(247,200,115,0.05),rgba(255,138,138,0.04))}
+.pact .col h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:18px}
+.pact .col:last-child h3{color:var(--gold)}
+.pact .col ul{list-style:none}
+.pact .col li{padding:10px 0 10px 22px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;line-height:1.7;color:var(--ink-dim);border-bottom:1px dashed rgba(109,240,210,0.12)}
+.pact .col li:last-child{border-bottom:none}
+.pact .col li::before{content:"›";position:absolute;left:0;top:10px;color:var(--teal);font-weight:700}
+.pact .col:last-child li::before{color:var(--gold)}
+
+/* ============== GOLDEN ============== */
+.golden{margin-top:56px;padding:40px 44px;background:linear-gradient(120deg,rgba(247,200,115,0.10),rgba(109,240,210,0.05));border:1px solid var(--line-2);border-left:3px solid var(--gold);position:relative}
+.golden .label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.3em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+.golden q{font-family:"Fraunces",serif;font-style:italic;font-weight:400;font-size:clamp(22px,2.6vw,34px);color:var(--ink);line-height:1.35}
+.golden q::before{content:"«";color:var(--gold);margin-right:4px}
+.golden q::after{content:"»";color:var(--gold);margin-left:4px}
+
+/* ============== TIMELINE 4-step ============== */
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:24px}
+.tl-step{padding:26px 22px;background:var(--panel-strong);border:1px solid var(--line);border-right:none;position:relative;backdrop-filter:blur(10px)}
+.tl-step:last-child{border-right:1px solid var(--line)}
+.tl-step::after{content:"→";position:absolute;right:-9px;top:30px;z-index:2;width:18px;height:18px;background:var(--bg-0);display:flex;align-items:center;justify-content:center;color:var(--teal);font-family:"JetBrains Mono",monospace;font-size:18px;text-shadow:0 0 8px var(--teal)}
+.tl-step:last-child::after{display:none}
+.tl-step .ts-num{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
+.tl-step .ts-name{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin-bottom:10px;letter-spacing:0.01em}
+.tl-step .ts-time{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--teal);margin-bottom:14px;letter-spacing:0.12em}
+.tl-step .ts-desc{font-family:"Fraunces",serif;font-size:14px;color:var(--ink-dim);font-style:italic;line-height:1.6}
+
+/* ============== SPEC GRID ============== */
+.spec-box{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.spec-card{padding:32px 30px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.spec-card.input{border-left:2px solid var(--teal)}
+.spec-card.output{border-left:2px solid var(--gold)}
+.spec-card h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;margin-bottom:16px}
+.spec-card.input h4{color:var(--teal)}
+.spec-card.output h4{color:var(--gold)}
+.spec-card ol{padding-left:0;list-style:none;counter-reset:scount}
+.spec-card li{counter-increment:scount;padding:9px 0 9px 36px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--ink);line-height:1.7}
+.spec-card li::before{content:counter(scount,decimal-leading-zero);position:absolute;left:0;top:10px;font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:0.08em}
+.spec-card.input li::before{color:var(--teal)}
+.spec-card.output li::before{color:var(--gold)}
+.spec-card li em{color:var(--teal);font-style:italic;font-family:"Fraunces",serif}
+.spec-card li code{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:rgba(109,240,210,0.1);color:var(--teal);padding:1px 6px;border-radius:2px}
+
+/* ============== FORMULA BOX ============== */
+.formula-box{margin-top:24px;display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.formulas{padding:36px 36px;background:var(--panel-strong);border:1px solid var(--line);border-left:2px solid var(--teal);backdrop-filter:blur(10px);position:relative}
+.formulas::before{content:"ISA · ICAO 1964";position:absolute;top:14px;right:18px;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.22em;color:var(--teal);opacity:0.55;text-transform:uppercase}
+.formulas h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.formulas .desc{font-family:"Fraunces",serif;font-style:italic;color:var(--ink-dim);font-size:15px;margin-bottom:18px;line-height:1.6}
+.formula{padding:18px;background:rgba(0,0,0,0.4);border:1px solid rgba(109,240,210,0.28);border-radius:2px;margin-bottom:14px}
+.formula .katex-display{margin:0}
+.formula .katex{font-size:1.25em !important;color:#fff !important;text-shadow:0 0 10px rgba(109,240,210,0.3)}
+.formula .katex *{color:#fff !important}
+.formula .katex .frac-line{border-bottom-color:var(--teal) !important;border-bottom-width:0.06em !important}
+.formula .katex .mord.mathnormal,.formula .katex .mathit{color:var(--gold) !important}
+.formula .katex .mrel,.formula .katex .mbin{color:var(--teal) !important}
+.formula .flabel{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.18em;color:var(--ink-dim);text-transform:uppercase;margin-top:10px}
+
+.constants{padding:36px 30px;background:var(--panel-strong);border:1px solid var(--line);border-left:2px solid var(--gold);backdrop-filter:blur(10px)}
+.constants h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.24em;color:var(--gold);text-transform:uppercase;margin-bottom:18px}
+.constants dl{display:grid;grid-template-columns:auto 1fr;gap:12px 18px}
+.constants dt{font-family:"Fraunces",serif;font-style:italic;color:var(--teal);font-size:16px}
+.constants dd{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--ink);letter-spacing:0.02em}
+
+/* ============== FLOWCHART ============== */
+.flowchart{margin-top:24px;padding:48px 36px;background:rgba(2,6,7,0.88);border:1px solid var(--line);backdrop-filter:blur(8px);position:relative}
+.flowchart::before,.flowchart::after{content:"";position:absolute;width:18px;height:18px;border-color:var(--teal);border-style:solid}
+.flowchart::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.flowchart::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+.flow-svg{width:100%;max-width:880px;margin:0 auto;display:block}
+.flow-svg text{font-family:"JetBrains Mono",monospace;fill:var(--ink);font-size:13px}
+.flow-svg .lbl{font-family:"Space Grotesk",sans-serif;font-size:11px;letter-spacing:0.12em;fill:var(--gold);text-transform:uppercase}
+.flow-svg .branch{font-family:"Space Grotesk",sans-serif;font-size:11px;fill:var(--teal);letter-spacing:0.1em}
+
+/* ============== CASES TABLE ============== */
+.cases-table{margin-top:24px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);overflow:hidden}
+.cases-table table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace}
+.cases-table th{padding:16px 18px;font-size:10px;letter-spacing:0.22em;color:var(--teal);text-transform:uppercase;font-weight:400;text-align:right;border-bottom:1px solid var(--line);background:rgba(109,240,210,0.04)}
+.cases-table th:first-child,.cases-table th:nth-child(2){text-align:left}
+.cases-table td{padding:13px 18px;font-size:13.5px;color:var(--ink);text-align:right;border-bottom:1px solid rgba(109,240,210,0.08)}
+.cases-table td:first-child{text-align:left;color:var(--gold);font-weight:700;width:50px}
+.cases-table td:nth-child(2){text-align:left;color:var(--ink);font-family:"Fraunces",serif;font-style:italic;font-size:14.5px}
+.cases-table td.regime{text-align:right;font-weight:500}
+.cases-table td.regime.r-inc{color:var(--teal)}
+.cases-table td.regime.r-sub{color:#94d8ff}
+.cases-table td.regime.r-tra{color:var(--gold)}
+.cases-table td.regime.r-sup{color:#cfb0ff}
+.cases-table td.regime.r-err{color:var(--rose)}
+.cases-table tr:last-child td{border-bottom:none}
+.cases-table tr.frontier td{background:rgba(247,200,115,0.05)}
+
+/* ============== REFERENCE TABLE ============== */
+.ref-table{margin-top:24px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);overflow:hidden}
+.ref-table table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace}
+.ref-table th{padding:14px 16px;font-size:10px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;font-weight:400;text-align:right;border-bottom:1px solid var(--line);background:rgba(247,200,115,0.04)}
+.ref-table th:first-child{text-align:left}
+.ref-table td{padding:13px 16px;font-size:13.5px;color:var(--ink);text-align:right;border-bottom:1px solid rgba(247,200,115,0.08)}
+.ref-table td:first-child{text-align:left;color:var(--gold);font-weight:700;width:50px}
+.ref-table tr:last-child td{border-bottom:none}
+
+.tolerances{margin-top:32px;padding:28px 32px;background:linear-gradient(120deg,rgba(109,240,210,0.05),rgba(247,200,115,0.04));border:1px solid var(--line);border-left:3px solid var(--teal)}
+.tolerances h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:14px}
+.tolerances ul{padding-left:0;list-style:none}
+.tolerances li{padding:6px 0 6px 22px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--ink);line-height:1.7}
+.tolerances li::before{content:"›";position:absolute;left:0;top:6px;color:var(--gold);font-weight:700}
+.tolerances .closing-note{margin-top:14px;font-family:"Fraunces",serif;font-style:italic;font-size:15px;color:var(--ink-dim);line-height:1.6}
+
+/* ============== PROMPT ANATOMY 6 parts ============== */
+.anatomy{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:24px}
+.an-cell{padding:26px 24px;background:var(--panel-strong);border:1px solid var(--line);border-right:none;border-bottom:none;backdrop-filter:blur(10px);position:relative;min-height:170px}
+.an-cell:nth-child(3n){border-right:1px solid var(--line)}
+.an-cell:nth-last-child(-n+3){border-bottom:1px solid var(--line)}
+.an-cell::after{content:attr(data-n);position:absolute;right:14px;top:8px;font-family:"Fraunces",serif;font-size:3.2rem;font-weight:700;color:rgba(255,255,255,0.03);line-height:1;pointer-events:none}
+.an-cell .an-tag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.22em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+.an-cell .an-name{font-family:"Fraunces",serif;font-weight:500;font-style:italic;font-size:22px;color:var(--ink);margin-bottom:10px}
+.an-cell .an-desc{font-family:"Space Grotesk",sans-serif;font-size:13.5px;color:var(--ink-dim);line-height:1.65}
+.an-cell .an-desc code{font-family:"JetBrains Mono",monospace;font-size:12px;background:rgba(109,240,210,0.1);color:var(--teal);padding:1px 6px;border-radius:2px}
+
+/* ============== PROMPT REFERENCE ============== */
+.translate-prompt{
+  margin-top:32px;padding:36px 38px;
+  background:linear-gradient(135deg,rgba(109,240,210,0.08),var(--panel-strong) 60%);
+  border:1px solid rgba(109,240,210,0.4);position:relative;
+}
+.translate-prompt .ptag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.28em;color:var(--teal);text-transform:uppercase;margin-bottom:14px}
+.translate-prompt .pname{font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:22px;color:var(--ink);margin-bottom:20px}
+.translate-prompt q{display:block;font-family:"Fraunces",serif;font-style:italic;font-size:16px;line-height:1.8;color:var(--ink);padding:24px 28px;background:rgba(0,0,0,0.42);border-left:3px solid var(--teal);white-space:pre-wrap}
+.translate-prompt q strong{font-weight:700;font-style:normal;color:var(--gold)}
+.translate-prompt q em{color:var(--teal);font-style:italic}
+
+/* ============== BAD vs GOOD prompts ============== */
+.prompts{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.prompt-card{padding:32px 28px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);position:relative}
+.prompt-card.bad{border-color:rgba(255,138,138,0.4);background:linear-gradient(135deg,rgba(255,138,138,0.08),var(--panel-strong) 60%)}
+.prompt-card.good{border-color:rgba(109,240,210,0.4);background:linear-gradient(135deg,rgba(109,240,210,0.08),var(--panel-strong) 60%)}
+.prompt-card .ptag{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:0.28em;text-transform:uppercase;margin-bottom:12px}
+.prompt-card.bad .ptag{color:var(--rose)}
+.prompt-card.good .ptag{color:var(--teal)}
+.prompt-card .pname{font-family:"Fraunces",serif;font-style:italic;font-weight:500;font-size:20px;color:var(--ink);margin-bottom:16px}
+.prompt-card ul{list-style:none}
+.prompt-card li{padding:8px 0 8px 22px;position:relative;font-family:"Fraunces",serif;font-style:italic;font-size:15px;line-height:1.65;border-bottom:1px dashed rgba(109,240,210,0.1)}
+.prompt-card li:last-child{border-bottom:none}
+.prompt-card li::before{position:absolute;left:0;top:8px;font-weight:700;font-style:normal}
+.prompt-card.bad li{color:rgba(255,184,184,0.85)}
+.prompt-card.bad li::before{content:"✗";color:var(--rose)}
+.prompt-card.good li{color:rgba(168,245,224,0.9)}
+.prompt-card.good li::before{content:"›";color:var(--teal)}
+
+/* ============== CODE ============== */
+.code-stage{margin-top:24px;background:rgba(2,6,7,0.94);border:1px solid var(--line);position:relative;backdrop-filter:blur(8px);box-shadow:0 0 60px rgba(0,0,0,0.4),inset 0 0 0 1px rgba(109,240,210,0.06)}
+.code-stage::before,.code-stage::after{content:"";position:absolute;width:18px;height:18px;border-color:var(--rose);border-style:solid}
+.code-stage::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+.code-stage::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+.code-head{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.18em;color:var(--rose);text-transform:uppercase}
+.code-head .dots{display:flex;gap:8px}
+.code-head .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.12)}
+.code-head .dots span:nth-child(1){background:#ff5454}
+.code-head .dots span:nth-child(2){background:var(--gold)}
+.code-head .dots span:nth-child(3){background:var(--teal)}
+.code-body{padding:24px 28px;font-family:"JetBrains Mono",monospace;font-size:13px;line-height:1.75;color:#d6e6e4;overflow-x:auto;white-space:pre}
+.code-body .ln{display:inline-block;width:30px;text-align:right;color:rgba(155,177,173,0.35);margin-right:18px;user-select:none}
+.code-body .kw{color:#ff8ad0;font-weight:500}
+.code-body .bi{color:#94d8ff}
+.code-body .st{color:#f7c873}
+.code-body .nm{color:#9fffe5}
+.code-body .cm{color:#7a8e8a;font-style:italic}
+.code-body .fn{color:#6df0d2}
+.code-body .op{color:#cfb0ff}
+.code-body .bug{color:#ff8a8a;font-weight:700}
+
+/* ============== CHECKLIST ============== */
+.checklist{margin-top:24px;padding:0;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.checklist ol{padding:0;list-style:none;counter-reset:ccount}
+.checklist li{counter-increment:ccount;padding:18px 28px 18px 70px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--ink);line-height:1.7;border-bottom:1px solid rgba(109,240,210,0.08)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:counter(ccount,decimal-leading-zero);position:absolute;left:24px;top:18px;font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--gold);letter-spacing:0.08em;font-weight:700}
+.checklist li em{color:var(--teal);font-style:italic;font-family:"Fraunces",serif}
+.checklist li code{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:rgba(109,240,210,0.1);color:var(--teal);padding:1px 6px;border-radius:2px}
+.checklist li strong{color:var(--gold);font-weight:700}
+
+/* ============== CALLOUT ============== */
+.callout{
+  margin-top:32px;padding:28px 32px;
+  background:linear-gradient(120deg,rgba(247,200,115,0.10),rgba(109,240,210,0.04));
+  border:1px solid var(--line-2);border-left:3px solid var(--gold);
+}
+.callout .cl-label{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.28em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
+.callout .cl-text{font-family:"Fraunces",serif;font-size:17px;color:var(--ink);line-height:1.7;font-style:italic}
+.callout .cl-text strong{color:var(--teal);font-style:normal;font-weight:700}
+.callout.warn{background:linear-gradient(120deg,rgba(255,138,138,0.10),rgba(109,240,210,0.04));border-color:rgba(255,138,138,0.3);border-left-color:var(--rose)}
+.callout.warn .cl-label{color:var(--rose)}
+.callout.warn .cl-text strong{color:var(--rose)}
+
+/* ============== EVAL ============== */
+.eval-grid{display:grid;grid-template-columns:1fr auto;gap:0;margin-top:24px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px);overflow:hidden}
+.eval-row{display:contents}
+.eval-row .voce{padding:16px 28px;font-family:"Fraunces",serif;font-size:16px;color:var(--ink);border-bottom:1px solid rgba(109,240,210,0.08)}
+.eval-row .punti{padding:16px 28px;font-family:"JetBrains Mono",monospace;font-size:15px;color:var(--gold);text-align:right;border-bottom:1px solid rgba(109,240,210,0.08);font-weight:700;letter-spacing:0.05em}
+.eval-row.total .voce{font-family:"JetBrains Mono",monospace;letter-spacing:0.18em;text-transform:uppercase;color:var(--teal);font-size:13px;border-bottom:none;background:rgba(109,240,210,0.06)}
+.eval-row.total .punti{color:var(--teal);font-size:18px;border-bottom:none;background:rgba(109,240,210,0.06)}
+
+.bonus{margin-top:24px;padding:28px 32px;background:linear-gradient(120deg,rgba(109,240,210,0.06),var(--panel-strong) 60%);border:1px solid var(--line);border-left:3px solid var(--teal)}
+.bonus h4{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:14px}
+.bonus ul{list-style:none;padding-left:0}
+.bonus li{padding:8px 0 8px 22px;position:relative;font-family:"Fraunces",serif;font-style:italic;font-size:15px;color:var(--ink);line-height:1.7}
+.bonus li::before{content:"+";position:absolute;left:0;top:8px;color:var(--gold);font-weight:700;font-style:normal;font-family:"JetBrains Mono",monospace}
+.bonus li code{font-family:"JetBrains Mono",monospace;font-size:12.5px;background:rgba(109,240,210,0.1);color:var(--teal);padding:1px 6px;border-radius:2px;font-style:normal}
+
+/* ============== REPORT STRUCTURE ============== */
+.report-list{margin-top:24px;background:var(--panel-strong);border:1px solid var(--line);backdrop-filter:blur(10px)}
+.report-list ol{list-style:none;padding:0;counter-reset:rcount}
+.report-list li{counter-increment:rcount;padding:18px 28px 18px 80px;position:relative;font-family:"Space Grotesk",sans-serif;font-size:15px;color:var(--ink);line-height:1.7;border-bottom:1px solid rgba(109,240,210,0.08)}
+.report-list li:last-child{border-bottom:none}
+.report-list li::before{content:counter(rcount,decimal-leading-zero);position:absolute;left:24px;top:18px;font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--teal);letter-spacing:0.08em;font-weight:700}
+.report-list li strong{font-family:"Fraunces",serif;font-weight:500;font-style:italic;color:var(--gold);font-size:16.5px;display:block;margin-bottom:4px;letter-spacing:-0.01em}
+.report-list li em{color:var(--teal);font-style:italic;font-family:"Fraunces",serif}
+
+/* ============== CLOSING ============== */
+.closing{padding:160px 8vw}
+.closing h2{font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:clamp(44px,6.5vw,100px);line-height:1.05;margin-bottom:32px;letter-spacing:-0.02em}
+.closing h2 em{font-style:italic;color:var(--teal)}
+.closing h2 .glow{color:var(--gold);text-shadow:0 0 30px rgba(247,200,115,0.4)}
+.closing .next{margin-top:48px;padding:36px 40px;background:var(--panel-strong);border:1px solid var(--line);border-left:3px solid var(--teal)}
+.closing .next h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;margin-bottom:18px}
+.closing .next ul{list-style:none}
+.closing .next li{padding:10px 0 10px 22px;position:relative;font-family:"Fraunces",serif;font-size:18px;color:var(--ink);line-height:1.6;border-bottom:1px dashed rgba(109,240,210,0.12)}
+.closing .next li:last-child{border-bottom:none}
+.closing .next li::before{content:"→";position:absolute;left:0;color:var(--gold)}
+.closing .next li code{font-family:"JetBrains Mono",monospace;font-size:14px;color:var(--teal);background:rgba(109,240,210,0.08);padding:1px 6px;border-radius:2px}
+
+.motto{margin-top:80px;text-align:center;font-family:"Fraunces",serif;font-style:italic;font-weight:300;font-size:clamp(26px,3.5vw,48px);line-height:1.35;color:var(--ink);letter-spacing:-0.01em;max-width:920px;margin-left:auto;margin-right:auto}
+.motto .a{color:var(--teal)}
+.motto .b{color:var(--gold)}
+
+.signature{margin-top:96px;padding-top:32px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:0.18em;color:var(--ink-dim);text-transform:uppercase}
+.signature .right{color:var(--gold)}
+
+@media (max-width:1100px){
+  .pact,.prompts,.spec-box,.formula-box{grid-template-columns:1fr}
+  .pact .col{border-right:none;border-bottom:1px solid var(--line)}
+  .pact .col:last-child{border-bottom:none}
+  .timeline{grid-template-columns:1fr 1fr}
+  .tl-step{border-right:1px solid var(--line);border-bottom:none}
+  .tl-step::after{display:none}
+  .anatomy{grid-template-columns:1fr 1fr}
+  .an-cell:nth-child(3n){border-right:none}
+  .an-cell:nth-child(2n){border-right:1px solid var(--line)}
+  .cases-table,.ref-table{font-size:12px}
+  .cases-table td,.ref-table td{padding:10px 12px}
+}
+@media (max-width:700px){
+  .timeline,.anatomy{grid-template-columns:1fr}
+  .an-cell{border-right:1px solid var(--line)}
+  section{padding:80px 6vw}
+  .rail{display:none}
+  .hud{font-size:9px;padding:10px 16px}
+  .hud .right{display:none}
+  .formula .katex{font-size:1.0em !important}
+  .cases-table,.ref-table{overflow-x:auto;display:block}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+<div class="vignette"></div>
+<div class="scanline"></div>
+
+<div class="hud">
+  <div class="left">
+    <span class="dot"></span>
+    <span>SYS · PYTHON FOR AERO · ESERCITAZIONE L01–L03</span>
+    <span style="color:var(--ink-dim)">Calcolatore di condizioni di volo</span>
+  </div>
+  <div class="right">
+    <span id="hud-section">SEC · 00 · INCIPIT</span>
+    <span id="hud-progress">PRG · 0%</span>
+  </div>
+</div>
+
+<nav class="rail" id="rail">
+  <div class="node" data-target="hero"><span class="mark"></span><span>00 · INCIPIT</span></div>
+  <div class="node" data-target="obiettivi"><span class="mark"></span><span>01 · OBIETTIVI</span></div>
+  <div class="node" data-target="regole"><span class="mark"></span><span>02 · REGOLE</span></div>
+  <div class="node" data-target="specifica"><span class="mark"></span><span>03 · SPECIFICA</span></div>
+  <div class="node" data-target="formule"><span class="mark"></span><span>04 · FORMULE</span></div>
+  <div class="node" data-target="flowchart"><span class="mark"></span><span>05 · FLUSSO</span></div>
+  <div class="node" data-target="casi"><span class="mark"></span><span>06 · CASI</span></div>
+  <div class="node" data-target="riferimento"><span class="mark"></span><span>07 · RIFERIMENTO</span></div>
+  <div class="node" data-target="anatomia"><span class="mark"></span><span>08 · ANATOMIA</span></div>
+  <div class="node" data-target="prompt"><span class="mark"></span><span>09 · PROMPT</span></div>
+  <div class="node" data-target="cattivi"><span class="mark"></span><span>10 · COSA NO</span></div>
+  <div class="node" data-target="lettura"><span class="mark"></span><span>11 · LETTURA</span></div>
+  <div class="node" data-target="bug"><span class="mark"></span><span>12 · BUG</span></div>
+  <div class="node" data-target="correggere"><span class="mark"></span><span>13 · CORREGGERE</span></div>
+  <div class="node" data-target="relazione"><span class="mark"></span><span>14 · RELAZIONE</span></div>
+  <div class="node" data-target="valutazione"><span class="mark"></span><span>15 · VALUTAZIONE</span></div>
+  <div class="node" data-target="closing"><span class="mark"></span><span>16 · OLTRE</span></div>
+</nav>
+
+<section class="hero" id="hero">
+  <div class="eyebrow">Esercitazione integrata · Lezioni 01–03</div>
+  <h1>
+    Calcolatore di<br>
+    <em>condizioni di volo</em>:<br>
+    dalla quota al regime.
+    <span class="stamp">ISA · UNITÀ · CONTROLLO DI FLUSSO</span>
+  </h1>
+  <p class="sub">
+    Due ore di lavoro per costruire — con l'IA come copilota — uno script Python che faccia dialogare le tre lezioni precedenti: il modello atmosferico, la conversione di unità aeronautiche, l'albero decisionale dei regimi di volo. La sfida non è scrivere codice, l'IA lo fa in dieci secondi. La sfida è capirlo, validarlo, correggerlo. Difenderlo.
+  </p>
+  <div class="meta">
+    <div>OBIETTIVO<br><b>Da h, V_TAS a regime classificato</b></div>
+    <div>INTEGRA<br><b>ISA · conversioni · if/elif/else</b></div>
+    <div>METODO<br><b>Specifica → prompt → validazione</b></div>
+  </div>
+  <div class="scroll-cue">
+    <div class="line"></div>
+    SCROLL · DALLA SPECIFICA AL CODICE DIFENDIBILE
+  </div>
+</section>
+
+<section id="obiettivi">
+  <div class="section-head">
+    <div class="num">§ 01 · Cosa metteremo in pratica oggi</div>
+    <h2>Tre lezioni<br>convergono in un<br><span class="accent">unico programma</span>.</h2>
+    <p class="lead">
+      L'esercitazione di oggi non introduce concetti nuovi: chiede di integrare ciò che è già stato costruito. Il modello ISA della troposfera (Lezione 01), la gestione disciplinata delle unità di misura (Lezione 02), le strutture di controllo per classificare il regime di volo (Lezione 03). Tre mattoni separati che diventano un'unica fabbricazione: uno script che, ricevuta una quota in piedi e una velocità in nodi, restituisce il quadro tecnico completo della condizione di volo.
+    </p>
+  </div>
+
+  <div class="pact">
+    <div class="col">
+      <h3>Obiettivo didattico</h3>
+      <ul>
+        <li>Integrare i contenuti delle prime tre lezioni in un singolo script Python.</li>
+        <li>Esercitare la disciplina di scrittura di prompt strutturati.</li>
+        <li>Riconoscere bug ricorrenti generati dall'IA su problemi tecnici.</li>
+        <li>Produrre una relazione difendibile davanti a chi vi chiederà ragione del risultato.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Obiettivo operativo</h3>
+      <ul>
+        <li>Input: quota <em>h</em> in piedi, velocità vera <em>V_TAS</em> in nodi.</li>
+        <li>Output: quota in metri, T, p, ρ ISA, velocità del suono <em>a</em>, Mach <em>M</em>, pressione dinamica <em>q</em>.</li>
+        <li>Classificazione automatica del regime di volo in cinque categorie.</li>
+        <li>Validazione formale degli input fuori dominio.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <div class="cl-label">Tempo a disposizione</div>
+    <div class="cl-text">
+      Due ore. Non è il tempo di scrittura del codice, che l'IA produce in dieci secondi: è il tempo necessario a <strong>specificare</strong> bene il problema, <strong>validare</strong> la risposta, <strong>correggere</strong> ciò che non torna. Tutto il resto si compra a poco prezzo. Questo, no.
+    </div>
+  </div>
+</section>
+
+<section id="regole">
+  <div class="section-head">
+    <div class="num">§ 02 · Le regole del gioco</div>
+    <h2>Quattro fasi obbligatorie.<br>Nessuna <em>scorciatoia</em><br><span class="accent">è ammessa</span>.</h2>
+    <p class="lead">
+      L'esercitazione ha un ordine preciso. Non è un suggerimento didattico: è la condizione perché il risultato finale sia veramente vostro e non un copia-incolla di codice scritto da qualcun altro. Saltare la fase 1 — quella in cui si pensa, si disegna, si scrive a mano — significa rinunciare a poter correggere il codice che l'IA produrrà. Chi non capisce il problema non riconosce gli errori della risposta.
+    </p>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-step">
+      <div class="ts-num">Fase 01</div>
+      <div class="ts-time">15 MIN · SENZA COMPUTER</div>
+      <div class="ts-name">Analisi del problema</div>
+      <div class="ts-desc">Lettura della specifica, schema di flusso a mano, identificazione di input e output, scrittura dei casi di prova.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 02</div>
+      <div class="ts-time">15 MIN · CON IA</div>
+      <div class="ts-name">Prompt strutturato</div>
+      <div class="ts-desc">Redazione del prompt in sei parti, esecuzione, ottenimento del codice. Il prompt è il vostro capitolato.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 03</div>
+      <div class="ts-time">60 MIN · CRITICO</div>
+      <div class="ts-name">Lettura e validazione</div>
+      <div class="ts-desc">Esecuzione di tutti i casi di prova, confronto con i valori attesi, individuazione dei bug, correzione mirata.</div>
+    </div>
+    <div class="tl-step">
+      <div class="ts-num">Fase 04</div>
+      <div class="ts-time">30 MIN · DOCUMENTAZIONE</div>
+      <div class="ts-name">Relazione tecnica</div>
+      <div class="ts-desc">Stesura del documento finale secondo lo schema fornito. È il prototipo di un vero report ingegneristico.</div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <div class="cl-label">Cosa non si può fare</div>
+    <div class="cl-text">
+      <strong>Saltare la fase 1</strong> — chi prompta senza aver capito il problema produce codice che non sa correggere. <strong>Accettare il codice senza eseguire tutti i casi di prova</strong> — un programma che funziona su un esempio è una promessa, non una garanzia.
+    </div>
+  </div>
+</section>
+
+<section id="specifica">
+  <div class="section-head">
+    <div class="num">§ 03 · Specifica funzionale</div>
+    <h2>Cosa il programma<br>deve fare,<br><span class="accent">scritto in chiaro</span>.</h2>
+    <p class="lead">
+      Una specifica funzionale non lascia spazio a interpretazione. Dichiara cosa entra, cosa esce, quali vincoli vanno rispettati. È la base contrattuale su cui il fornitore — in questo caso l'IA — produrrà il manufatto. Più la specifica è precisa, meno il fornitore deve inventare. E quando inventa, è quasi sempre dove inciampano i programmi.
+    </p>
+  </div>
+
+  <div class="spec-box">
+    <div class="spec-card input">
+      <h4>Input richiesti</h4>
+      <ol>
+        <li>Quota di volo <em>h</em> in <strong style="color:var(--gold);font-weight:700">piedi</strong> (<code>ft</code>).</li>
+        <li>Velocità vera <em>V<sub>TAS</sub></em> in <strong style="color:var(--gold);font-weight:700">nodi</strong> (<code>kt</code>).</li>
+      </ol>
+    </div>
+    <div class="spec-card output">
+      <h4>Output richiesti</h4>
+      <ol>
+        <li>Quota convertita in metri.</li>
+        <li>Condizioni atmosferiche ISA a quota <em>h</em>: <em>T, p, ρ</em>.</li>
+        <li>Velocità del suono <em>a</em> e numero di Mach <em>M</em>.</li>
+        <li>Pressione dinamica <em>q</em>.</li>
+        <li>Classificazione del regime di volo.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Vincoli operativi · validazione obbligatoria</div>
+    <div class="cl-text">
+      <strong>0 ≤ h ≤ 11 000 m</strong> (troposfera ISA); <strong>V<sub>TAS</sub> ≥ 0</strong>. Se anche solo uno dei due controlli fallisce, il programma deve stampare un messaggio d'errore e <em>terminare senza eseguire alcun calcolo</em>. Validare significa fermarsi: continuare con un input non valido è la peggiore forma di silenzio.
+    </div>
+  </div>
+</section>
+
+<section id="formule">
+  <div class="section-head">
+    <div class="num">§ 04 · Formule di riferimento</div>
+    <h2>Tutte <em>già viste</em>,<br>tutte da <span class="accent">scrivere<br>esplicite nel prompt</span>.</h2>
+    <p class="lead">
+      Queste formule non sono nuove: appartengono ciascuna a una delle tre lezioni precedenti. La regola d'oro del prompt strutturato è scriverle esplicitamente — non lasciare che l'IA le ricostruisca a memoria. Una formula tipografata è una formula non interpretabile in modo ambiguo. Una formula descritta a parole è una formula che il modello può trascrivere male, soprattutto sui segni e sugli esponenti.
+    </p>
+  </div>
+
+  <div class="formula-box">
+    <div class="formulas">
+      <h4>Atmosfera ISA · troposfera</h4>
+      <div class="desc">Profilo lineare di temperatura, pressione barotropica, densità da equazione di stato dei gas perfetti.</div>
+      <div class="formula"><span class="kt" data-formula="T(h) = T_0 + \lambda\,h"></span><div class="flabel">Temperatura</div></div>
+      <div class="formula"><span class="kt" data-formula="p(h) = p_0 \left(\frac{T}{T_0}\right)^{-g_0/(\lambda R)}"></span><div class="flabel">Pressione</div></div>
+      <div class="formula"><span class="kt" data-formula="\rho(h) = \frac{p}{R\,T}"></span><div class="flabel">Densità</div></div>
+      <h4 style="margin-top:24px">Aerodinamica</h4>
+      <div class="formula"><span class="kt" data-formula="a = \sqrt{\gamma R T}"></span><div class="flabel">Velocità del suono</div></div>
+      <div class="formula"><span class="kt" data-formula="M = \frac{V_\mathrm{TAS}}{a}\,,\qquad q = \tfrac{1}{2}\,\rho\,V_\mathrm{TAS}^{\,2}"></span><div class="flabel">Mach e pressione dinamica</div></div>
+    </div>
+    <div class="constants">
+      <h4>Costanti · ICAO 1964</h4>
+      <dl>
+        <dt>T₀</dt><dd>288,15 K</dd>
+        <dt>p₀</dt><dd>101 325 Pa</dd>
+        <dt>λ</dt><dd>−0,0065 K/m</dd>
+        <dt>g₀</dt><dd>9,80665 m/s²</dd>
+        <dt>R</dt><dd>287,05 J/(kg·K)</dd>
+        <dt>γ</dt><dd>1,4</dd>
+        <dt>1 ft</dt><dd>0,3048 m</dd>
+        <dt>1 kt</dt><dd>1852/3600 m/s</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section id="flowchart">
+  <div class="section-head">
+    <div class="num">§ 05 · Diagramma di flusso</div>
+    <h2>Disegnatelo <em>a mano</em><br>prima di qualunque<br><span class="accent">prompt</span>.</h2>
+    <p class="lead">
+      Il diagramma di flusso è il ponte tra la specifica e il codice. È l'oggetto che traduce la prosa della specifica in una struttura sequenziale di decisioni e calcoli. Disegnarlo a mano costringe a chiarire l'ordine delle operazioni: prima la conversione delle unità, poi la validazione, poi i calcoli, poi la classificazione. Saltare un passaggio nel disegno significa saltarlo nel codice — e quando si salta la validazione, il programma produce numeri anche per input impossibili.
+    </p>
+  </div>
+
+  <div class="flowchart">
+    <svg class="flow-svg" viewBox="0 0 880 580" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6df0d2"/>
+        </marker>
+      </defs>
+
+      <rect x="320" y="20" width="240" height="56" fill="rgba(109,240,210,0.06)" stroke="#6df0d2" stroke-width="1" rx="2"/>
+      <text x="440" y="44" text-anchor="middle" class="lbl">START</text>
+      <text x="440" y="64" text-anchor="middle">Input: h_ft, V_kt</text>
+
+      <line x1="440" y1="76" x2="440" y2="106" stroke="#6df0d2" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="320" y="106" width="240" height="44" fill="rgba(247,200,115,0.05)" stroke="#f7c873" stroke-width="1" rx="2"/>
+      <text x="440" y="133" text-anchor="middle">h_m = h_ft × 0.3048</text>
+
+      <line x1="440" y1="150" x2="440" y2="180" stroke="#6df0d2" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <polygon points="440,180 620,240 440,300 260,240" fill="rgba(247,200,115,0.07)" stroke="#f7c873" stroke-width="1.2"/>
+      <text x="440" y="232" text-anchor="middle" style="font-size:12px">0 ≤ h_m ≤ 11000</text>
+      <text x="440" y="252" text-anchor="middle" style="font-size:12px">e V_kt ≥ 0 ?</text>
+
+      <line x1="260" y1="240" x2="120" y2="240" stroke="#ff8a8a" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="190" y="232" text-anchor="middle" class="branch" style="fill:#ff8a8a">NO</text>
+      <rect x="40" y="220" width="160" height="44" fill="rgba(255,138,138,0.08)" stroke="#ff8a8a" stroke-width="1" rx="2"/>
+      <text x="120" y="246" text-anchor="middle" style="fill:#ff8a8a">ERRORE · END</text>
+
+      <line x1="440" y1="300" x2="440" y2="330" stroke="#6df0d2" stroke-width="1" marker-end="url(#arrow)"/>
+      <text x="460" y="320" text-anchor="start" class="branch">SÌ</text>
+
+      <rect x="320" y="330" width="240" height="44" fill="rgba(109,240,210,0.06)" stroke="#6df0d2" stroke-width="1" rx="2"/>
+      <text x="440" y="357" text-anchor="middle">Calcola T, p, ρ · ISA</text>
+
+      <line x1="440" y1="374" x2="440" y2="404" stroke="#6df0d2" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="320" y="404" width="240" height="44" fill="rgba(109,240,210,0.06)" stroke="#6df0d2" stroke-width="1" rx="2"/>
+      <text x="440" y="431" text-anchor="middle">Calcola a, M, q</text>
+
+      <line x1="440" y1="448" x2="440" y2="478" stroke="#6df0d2" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="320" y="478" width="240" height="44" fill="rgba(247,200,115,0.06)" stroke="#f7c873" stroke-width="1" rx="2"/>
+      <text x="440" y="505" text-anchor="middle">Classifica regime · if/elif/else</text>
+
+      <line x1="440" y1="522" x2="440" y2="552" stroke="#6df0d2" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <rect x="320" y="552" width="240" height="28" fill="rgba(109,240,210,0.04)" stroke="#6df0d2" stroke-width="1" rx="14"/>
+      <text x="440" y="572" text-anchor="middle" class="lbl">STAMPA RISULTATI · END</text>
+    </svg>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Lezione di metodo</div>
+    <div class="cl-text">
+      Il codice viene <strong>dopo</strong> lo schema, mai prima. Chi inverte l'ordine costruisce una casa partendo dal tetto: si regge per un istante, poi crolla al primo input fuori specifica.
+    </div>
+  </div>
+</section>
+
+<section id="casi">
+  <div class="section-head">
+    <div class="num">§ 06 · Casi di prova da preparare a mano</div>
+    <h2>Sette scenari.<br>Quattro <em>regimi di volo</em>,<br>una <span class="accent">frontiera</span>,<br>due input <span class="accent">non validi</span>.</h2>
+    <p class="lead">
+      Un buon banco di prova copre tre regioni distinte: i casi nominali (regimi tipici, dove il programma deve calcolare correttamente), i casi-frontiera (dove le formule cambiano comportamento, tipicamente alla tropopausa), i casi degeneri (input fuori dominio, dove il programma deve <em>rifiutarsi</em> di calcolare). Saltarne anche solo una regione significa accettare la possibilità che il codice consegnato faccia danni in produzione.
+    </p>
+  </div>
+
+  <div class="cases-table">
+    <table>
+      <thead>
+        <tr>
+          <th>N.</th>
+          <th>Scenario</th>
+          <th>h [ft]</th>
+          <th>V<sub>TAS</sub> [kt]</th>
+          <th>Esito atteso</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>01</td><td>Cessna 172 in salita</td><td>1 640</td><td>100</td><td class="regime r-inc">INCOMPRIMIBILE</td></tr>
+        <tr><td>02</td><td>Liner a FL100</td><td>10 000</td><td>250</td><td class="regime r-sub">SUBSONICO</td></tr>
+        <tr><td>03</td><td>Liner in crociera</td><td>35 000</td><td>480</td><td class="regime r-tra">TRANSONICO</td></tr>
+        <tr><td>04</td><td>Concorde supersonico</td><td>32 800</td><td>1 147</td><td class="regime r-sup">SUPERSONICO</td></tr>
+        <tr class="frontier"><td>05</td><td>Limite ISA · frontiera</td><td>36 089</td><td>480</td><td class="regime r-tra">TRANSONICO · M ≈ 0,84</td></tr>
+        <tr><td>06</td><td>Input fuori dominio</td><td>50 000</td><td>480</td><td class="regime r-err">ERRORE</td></tr>
+        <tr><td>07</td><td>Input non fisico</td><td>1 000</td><td>−10</td><td class="regime r-err">ERRORE</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Cosa coprono questi casi</div>
+    <div class="cl-text">
+      <strong>Casi 1–4</strong>: i quattro regimi di volo principali della Lezione 03. <strong>Caso 5</strong>: la frontiera della troposfera (11 000 m ≈ 36 089 ft), il punto in cui le formule cambiano e in cui — se l'IA ha sbagliato la condizione del ramo — si vede subito. <strong>Casi 6–7</strong>: la validazione degli input, la parte spesso dimenticata dall'IA, che produce codice "ottimista" pronto a calcolare anche dove la fisica non lo permette.
+    </div>
+  </div>
+</section>
+
+<section id="riferimento">
+  <div class="section-head">
+    <div class="num">§ 07 · Valori di riferimento · uso del docente</div>
+    <h2>I numeri attesi:<br>il <em>metro</em> con cui<br><span class="accent">misurare il codice</span>.</h2>
+    <p class="lead">
+      Validare significa confrontare. Per confrontare servono i valori attesi: i numeri che il programma <em>dovrebbe</em> produce per ciascun caso. Sono calcolati con le stesse formule, manualmente o con una calcolatrice scientifica, in modo da costituire la verità di riferimento. Quando il programma esce dalle tolleranze indicate, l'errore è certo: non è "questione di approssimazione", è un bug da trovare.
+    </p>
+  </div>
+
+  <div class="ref-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Caso</th>
+          <th>h [m]</th>
+          <th>T [K]</th>
+          <th>ρ [kg/m³]</th>
+          <th>a [m/s]</th>
+          <th>M</th>
+          <th>Regime</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>01</td><td>500</td><td>284,90</td><td>1,1673</td><td>338,37</td><td>0,152</td><td style="color:var(--teal)">INCOMPRIMIBILE</td></tr>
+        <tr><td>02</td><td>3 048</td><td>268,34</td><td>0,9046</td><td>328,39</td><td>0,392</td><td style="color:#94d8ff">SUBSONICO</td></tr>
+        <tr><td>03</td><td>10 668</td><td>218,81</td><td>0,3796</td><td>296,53</td><td>0,833</td><td style="color:var(--gold)">TRANSONICO</td></tr>
+        <tr><td>04</td><td>9 997</td><td>223,17</td><td>0,4147</td><td>299,47</td><td>1,971</td><td style="color:#cfb0ff">SUPERSONICO</td></tr>
+        <tr><td>05</td><td>11 000</td><td>216,65</td><td>0,3639</td><td>295,07</td><td>0,837</td><td style="color:var(--gold)">TRANSONICO</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tolerances">
+    <h4>Tolleranze accettabili</h4>
+    <ul>
+      <li>Temperatura · <strong style="color:var(--teal)">±0,1 K</strong></li>
+      <li>Pressione, densità · <strong style="color:var(--teal)">±0,5 %</strong></li>
+      <li>Numero di Mach · <strong style="color:var(--teal)">±0,002</strong></li>
+    </ul>
+    <p class="closing-note">Discrepanze maggiori indicano sempre un errore di formula o di costante — non un'imprecisione numerica.</p>
+  </div>
+</section>
+
+<section id="anatomia">
+  <div class="section-head">
+    <div class="num">§ 08 · Anatomia di un prompt strutturato</div>
+    <h2>Sei parti.<br>Una <em>specifica<br>tecnica</em> in prosa.</h2>
+    <p class="lead">
+      Un prompt non è una preghiera, è un capitolato. Le sei parti elencate sotto sono il minimo necessario perché l'IA possa produrre codice difendibile. Saltarne una significa lasciare a chi risponde la libertà di inventare quella parte — e quando l'IA inventa, lo fa con la stessa sicurezza con cui scrive il resto. Voi non vi accorgete della differenza, ma la fisica sì.
+    </p>
+  </div>
+
+  <div class="anatomy">
+    <div class="an-cell" data-n="1">
+      <div class="an-tag">Componente 01</div>
+      <div class="an-name">Ruolo</div>
+      <div class="an-desc">Chi sta scrivendo: <code>"Sei un programmatore Python esperto in aerodinamica"</code>. Calibra il vocabolario tecnico e le assunzioni implicite.</div>
+    </div>
+    <div class="an-cell" data-n="2">
+      <div class="an-tag">Componente 02</div>
+      <div class="an-name">Compito</div>
+      <div class="an-desc">La specifica funzionale completa, in prosa: cosa il programma deve fare, in che ordine, con quale flusso.</div>
+    </div>
+    <div class="an-cell" data-n="3">
+      <div class="an-tag">Componente 03</div>
+      <div class="an-name">Dati</div>
+      <div class="an-desc">Gli input richiesti, con le loro unità di misura esplicite. Una grandezza senza unità è una grandezza ambigua.</div>
+    </div>
+    <div class="an-cell" data-n="4">
+      <div class="an-tag">Componente 04</div>
+      <div class="an-name">Formule</div>
+      <div class="an-desc">Scritte esplicitamente nel prompt, anche se note. Toglie ogni margine di interpretazione su segni, esponenti, costanti.</div>
+    </div>
+    <div class="an-cell" data-n="5">
+      <div class="an-tag">Componente 05</div>
+      <div class="an-name">Costanti</div>
+      <div class="an-desc">I valori numerici esatti: <code>T₀ = 288,15</code>, <code>p₀ = 101 325</code>, <code>γ = 1,4</code>. Non lasciare che il modello li ricordi.</div>
+    </div>
+    <div class="an-cell" data-n="6">
+      <div class="an-tag">Componente 06</div>
+      <div class="an-name">Vincoli</div>
+      <div class="an-desc">Validazione richiesta, stile del codice, formato dell'output, lingua dei commenti. Tutto ciò che decide la qualità formale.</div>
+    </div>
+  </div>
+
+  <div class="golden">
+    <div class="label">Regola di scrittura</div>
+    <q>Se non sapresti spiegare il problema a un compagno di classe in modo chiaro, l'IA non potrà farlo al posto tuo. La chiarezza è la sostanza del prompt.</q>
+  </div>
+</section>
+
+<section id="prompt">
+  <div class="section-head">
+    <div class="num">§ 09 · Prompt di riferimento</div>
+    <h2>Il <em>capitolato</em><br>che genera il codice<br><span class="accent">accettabile</span>.</h2>
+    <p class="lead">
+      Quello che segue è il prompt completo, già adattato al problema. Copiatelo, leggetelo riga per riga, riconoscete le sei parti dell'anatomia. Notate come ogni dettaglio sia esplicitato: i nomi delle variabili, l'ordine delle operazioni, la regola di classificazione, persino lo stile dei commenti. Quando il prompt è di questa qualità, il codice che l'IA restituisce ha pochi gradi di libertà per inventare.
+    </p>
+  </div>
+
+  <div class="translate-prompt">
+    <div class="ptag">Prompt completo · da copiare e adattare</div>
+    <div class="pname">Calcolatore di condizioni di volo · integrazione L01–L03</div>
+    <q>Sei un <strong>programmatore Python esperto in aerodinamica</strong>. Scrivi uno script che chieda all'utente: (1) la quota di volo <em>h</em> in piedi (ft); (2) la velocità vera <em>TAS</em> in nodi (kt).
+
+Prima validi che la quota convertita in metri sia compresa tra 0 e 11000 m (troposfera ISA) e che la velocità sia non negativa. Se anche solo uno dei due controlli fallisce, stampa un messaggio di errore e termina <em>senza eseguire alcun calcolo</em>.
+
+Se i dati sono validi, calcola in sequenza:
+— la quota in metri (1 ft = 0,3048 m);
+— la temperatura ISA <em>T = T₀ + λh</em> con T₀ = 288,15 K, λ = −0,0065 K/m;
+— la pressione <em>p = p₀·(T/T₀)^(−g₀/(λR))</em> con p₀ = 101325 Pa, g₀ = 9,80665, R = 287,05;
+— la densità <em>ρ = p/(RT)</em>;
+— la velocità del suono <em>a = √(γRT)</em> con γ = 1,4;
+— il numero di Mach <em>M = V_ms / a</em>, dove V_ms = V_kt · 1852/3600;
+— la pressione dinamica <em>q = ½·ρ·V_ms²</em>.
+
+Classifica il regime di volo in 5 categorie usando <strong>if/elif/else</strong>:
+— incomprimibile (M &lt; 0,3);
+— subsonico (0,3 ≤ M &lt; 0,8);
+— transonico (0,8 ≤ M &lt; 1,2);
+— supersonico (1,2 ≤ M &lt; 5);
+— ipersonico (M ≥ 5).
+
+Stampa tutti i risultati con <strong>4 cifre significative</strong>, indicando l'unità di misura. Usa costanti in MAIUSCOLO, nomi parlanti, commenta ogni passaggio in italiano.</q>
+  </div>
+</section>
+
+<section id="cattivi">
+  <div class="section-head">
+    <div class="num">§ 10 · Cosa non scrivere mai in un prompt</div>
+    <h2>Quattro modi sicuri<br>di ottenere<br><span class="accent">codice spazzatura</span>.</h2>
+    <p class="lead">
+      Una specifica tecnica vaga non produce mai un manufatto preciso. Lo stesso vale per i prompt all'IA. Sotto sono raccolti i quattro errori più frequenti, accompagnati da una buona euristica per riconoscerli prima di premere invio. Vale anche al contrario: imparare a scrivere bene i prompt è un esercizio di rigore che si trasferisce direttamente al modo in cui scriverete capitolati professionali domani.
+    </p>
+  </div>
+
+  <div class="prompts">
+    <div class="prompt-card bad">
+      <div class="ptag">Prompt "cattivi" tipici</div>
+      <div class="pname">Cosa evitare a tutti i costi</div>
+      <ul>
+        <li>"Fammi un programma sull'atmosfera" · troppo vago, l'IA inventa.</li>
+        <li>"Calcola tutto" · non specifica cosa.</li>
+        <li>"Usa formule giuste" · non dice quali.</li>
+        <li>"Fai velocemente, non ho tempo" · non aggiunge informazione tecnica.</li>
+      </ul>
+    </div>
+    <div class="prompt-card good">
+      <div class="ptag">Una buona euristica</div>
+      <div class="pname">Il prompt come capitolato</div>
+      <ul>
+        <li>Specifica i tipi e le unità di ogni input.</li>
+        <li>Scrivi le formule per esteso, mai a memoria.</li>
+        <li>Indica esplicitamente la validazione richiesta.</li>
+        <li>Definisci il formato dell'output (cifre, unità, lingua).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <div class="cl-label">Responsabilità formale vs responsabilità tecnica</div>
+    <div class="cl-text">
+      Un prompt è come la specifica per una commessa: se manca un dato, il fornitore (l'IA) lo inventa. Se inventa, voi non avete la responsabilità <em>formale</em> dell'errore — ma avete la responsabilità <strong>tecnica</strong>. E in ingegneria, l'unica che conta davvero è la seconda.
+    </div>
+  </div>
+</section>
+
+<section id="lettura">
+  <div class="section-head">
+    <div class="num">§ 11 · Checklist di lettura del codice generato</div>
+    <h2>Sei controlli<br>da fare <em>prima</em><br><span class="accent">di eseguire</span>.</h2>
+    <p class="lead">
+      Eseguire il codice senza averlo letto è il modo più rapido di farsi ingannare. La maggior parte dei bug si vede già a occhio nudo, purché si sappia dove guardare. Questa checklist condensa sei punti su cui l'IA tipicamente sbaglia quando il prompt non è stringente: costanti, segni degli esponenti, coerenza delle unità, ordine di validazione, completezza dei rami di classificazione.
+    </p>
+  </div>
+
+  <div class="checklist">
+    <ol>
+      <li>Le <strong>costanti</strong> hanno i valori richiesti? Occhio agli zeri di troppo, ai punti decimali, alle approssimazioni.</li>
+      <li>L'<strong>esponente della pressione</strong> ha il segno corretto? <code>−g₀/(λR)</code> deve risultare positivo perché <em>λ &lt; 0</em>.</li>
+      <li>Le <strong>unità sono coerenti</strong>? <em>V</em> deve essere convertita in m/s <em>prima</em> di calcolare <em>M</em> e <em>q</em>.</li>
+      <li>La <strong>validazione</strong> è fatta <em>prima</em> dei calcoli? Validare dopo aver già calcolato è metà del lavoro.</li>
+      <li>L'<strong>else</strong> dei rami di classificazione cattura davvero <em>tutti</em> i casi residui? Nessun regime deve restare scoperto.</li>
+      <li>Le condizioni <code>if M &lt; 0.3</code> sono coerenti con gli intervalli specificati? Verificate le disuguaglianze strette o larghe.</li>
+    </ol>
+  </div>
+
+  <div class="callout warn">
+    <div class="cl-label">Bug ricorrenti già osservati</div>
+    <div class="cl-text">
+      <strong>Uno</strong>: confusione fra λ e |λ| nella formula della pressione, esponente con segno sbagliato. <strong>Due</strong>: <em>V</em> usata in kt nelle formule di M e q, senza convertire. <strong>Tre</strong>: validazione fatta dopo la conversione ft → m ma applicata al valore originale in ft, con tutto fuori scala. Tre errori diversi, una sola causa: l'IA ottimizza la sintassi prima della fisica.
+    </div>
+  </div>
+</section>
+
+<section id="bug">
+  <div class="section-head">
+    <div class="num">§ 12 · Anatomia di un bug ricorrente</div>
+    <h2>Saper riconoscere<br>il <em>bug</em> è metà<br><span class="accent">del lavoro</span>.</h2>
+    <p class="lead">
+      Qui sotto trovate un frammento di codice con un bug realistico, di quelli che l'IA produce regolarmente quando il prompt non insiste sulla conversione delle unità. Leggetelo. Vedete il bug? In caso negativo, eseguite mentalmente il caso di prova numero 2 — Liner a FL100, V = 250 kt — e confrontate con i valori attesi.
+    </p>
+  </div>
+
+  <div class="code-stage">
+    <div class="code-head">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div>CODICE CON BUG · esempio didattico</div>
+    </div>
+<div class="code-body"><span class="ln">1</span><span class="cm"># Snippet con bug -- saperlo riconoscere è metà del lavoro</span>
+<span class="ln">2</span>
+<span class="ln">3</span>V_kt <span class="op">=</span> <span class="bi">float</span>(<span class="bi">input</span>(<span class="st">"Velocità TAS [kt]: "</span>))
+<span class="ln">4</span><span class="cm"># ... calcoli ISA che producono T, p, rho, a ...</span>
+<span class="ln">5</span>
+<span class="ln">6</span>M <span class="op">=</span> <span class="bug">V_kt</span> <span class="op">/</span> a                  <span class="cm"># BUG: V_kt non è in m/s</span>
+<span class="ln">7</span>q <span class="op">=</span> <span class="nm">0.5</span> <span class="op">*</span> rho <span class="op">*</span> <span class="bug">V_kt</span><span class="op">**</span><span class="nm">2</span>      <span class="cm"># BUG: V_kt² in kt² -- non ha senso fisico!</span></div>
+  </div>
+
+  <div class="pact" style="margin-top:32px">
+    <div class="col">
+      <h3>Atteso · caso 02 · Liner FL100</h3>
+      <ul>
+        <li>V = 250 kt, ρ ≈ 0,9046 kg/m³</li>
+        <li>M ≈ <strong style="color:var(--teal);font-weight:700">0,39</strong></li>
+        <li>q ≈ <strong style="color:var(--teal);font-weight:700">7 475 Pa</strong></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Output con bug</h3>
+      <ul>
+        <li>M ≈ <strong style="color:var(--rose);font-weight:700">0,76</strong> · circa il doppio</li>
+        <li>q ≈ <strong style="color:var(--rose);font-weight:700">28 267 Pa</strong> · quasi quadruplo</li>
+        <li>Conversione mancante: 1 kt ≈ 0,514 m/s, e 1/0,514 ≈ 1,944 — da cui il fattore ≈ 2 su M e ≈ 3,8 su q.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="golden">
+    <div class="label">Lezione</div>
+    <q>La validazione con numeri attesi svela bug che la lettura del codice da sola lascerebbe passare. Senza un riferimento numerico esterno, anche un occhio esperto vede solo sintassi corretta. Sono i numeri a parlare.</q>
+  </div>
+</section>
+
+<section id="correggere">
+  <div class="section-head">
+    <div class="num">§ 13 · Come chiedere all'IA di correggere</div>
+    <h2>Non "non funziona":<br>"ho atteso <em>X</em>,<br>ho ottenuto <span class="accent">Y</span>".</h2>
+    <p class="lead">
+      Un prompt di correzione vago — "il codice non va, sistemalo" — genera quasi sempre una riscrittura completa che risolve il sintomo ma reintroduce bug altrove. Un prompt di correzione strutturato indica due cose precise: <em>cosa</em> ci si aspettava (con i numeri) e <em>dove</em> cercare (con la parte del codice incriminata). L'IA, ricevendo informazione mirata, produce una correzione mirata.
+    </p>
+  </div>
+
+  <div class="translate-prompt">
+    <div class="ptag">Prompt di correzione · strutturato</div>
+    <div class="pname">Quando il caso 02 produce un Mach quasi doppio</div>
+    <q>Ho eseguito il tuo codice con <strong>h = 10 000 ft, V = 250 kt</strong>. Mi aspetto <em>M ≈ 0,39</em> e <em>q ≈ 7 475 Pa</em>. Il tuo codice produce <em>M ≈ 0,76</em> e <em>q ≈ 28 267 Pa</em>.
+
+Verifica la conversione di <strong>V in m/s</strong> prima del calcolo di M e q: 1 kt = 1852/3600 m/s ≈ 0,5144 m/s.</q>
+  </div>
+
+  <div class="callout">
+    <div class="cl-label">Strategia · dare all'IA i numeri attesi</div>
+    <div class="cl-text">
+      Indicando <strong>cosa aspettarsi</strong> (con i valori) e <strong>dove cercare</strong> (quale parte del codice), si ottiene una correzione chirurgica. Senza riferimenti numerici, l'IA tenta a tentoni e spesso rompe ciò che funzionava.
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <div class="cl-label">Verifica finale dopo ogni correzione</div>
+    <div class="cl-text">
+      Dopo che l'IA ha corretto, <strong>rieseguite tutti e sette i casi di prova</strong>, non solo quello che ha rivelato il bug. Una correzione che ne risolve uno e ne introduce un altro altrove è — formalmente — un bug peggiore di quello originale: vi siete fidati di un codice che adesso fallisce in punti che non sapete.
+    </div>
+  </div>
+</section>
+
+<section id="relazione">
+  <div class="section-head">
+    <div class="num">§ 14 · Struttura della relazione tecnica</div>
+    <h2>Otto sezioni.<br>Massimo <em>due pagine</em>.<br><span class="accent">È un report</span>, non un tema.</h2>
+    <p class="lead">
+      La relazione tecnica che consegnate è il prototipo dei documenti che produrrete in carriera: capitolati, report di prova, note di calcolo, presentazioni di risultati. La forma conta tanto quanto il contenuto — un risultato giusto, comunicato male, vale poco. Otto sezioni obbligatorie, due pagine al massimo. La concisione è la prima forma di rispetto verso chi legge.
+    </p>
+  </div>
+
+  <div class="report-list">
+    <ol>
+      <li><strong>Intestazione</strong> Nome, classe, data, titolo dell'esercitazione.</li>
+      <li><strong>Specifica</strong> Cosa fa il programma, in tre o quattro righe asciutte.</li>
+      <li><strong>Diagramma di flusso</strong> Scansione del disegno fatto a mano nella fase 1.</li>
+      <li><strong>Prompt finale</strong> Il testo esatto del prompt che ha generato il codice accettato.</li>
+      <li><strong>Codice prodotto</strong> Incollato <em>come testo</em>, mai come immagine.</li>
+      <li><strong>Tabella di validazione</strong> I sette casi di prova, con valore atteso e valore ottenuto a confronto.</li>
+      <li><strong>Bug trovati e correzioni</strong> Descrizione di almeno un bug e di come è stato risolto. Se non c'è stato alcun bug, descrivetene uno plausibile e spiegate come si sarebbe scoperto.</li>
+      <li><strong>Conclusioni</strong> Cosa avete imparato, cosa ha funzionato, cosa no.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="valutazione">
+  <div class="section-head">
+    <div class="num">§ 15 · Criteri di valutazione</div>
+    <h2>Cento punti<br>distribuiti su <em>sette voci</em>.<br><span class="accent">Più bonus</span>.</h2>
+    <p class="lead">
+      Il punteggio non premia il codice "che funziona": premia il processo. Vale tanto il diagramma fatto a mano quanto il bug correttamente individuato. Vale tanto il prompt strutturato quanto la relazione chiara. Una valutazione che pesa solo il risultato finale incoraggia a saltare la fase 1; una valutazione che pesa il processo educa a non saltarla mai.
+    </p>
+  </div>
+
+  <div class="eval-grid">
+    <div class="eval-row">
+      <div class="voce">Diagramma di flusso corretto e completo</div>
+      <div class="punti">15</div>
+    </div>
+    <div class="eval-row">
+      <div class="voce">Prompt strutturato · almeno 5 delle 6 parti</div>
+      <div class="punti">15</div>
+    </div>
+    <div class="eval-row">
+      <div class="voce">Codice funzionante sui casi 01–04</div>
+      <div class="punti">20</div>
+    </div>
+    <div class="eval-row">
+      <div class="voce">Validazione corretta dei casi 06–07 · input non validi</div>
+      <div class="punti">10</div>
+    </div>
+    <div class="eval-row">
+      <div class="voce">Test del caso-frontiera · caso 05</div>
+      <div class="punti">10</div>
+    </div>
+    <div class="eval-row">
+      <div class="voce">Bug individuato e corretto correttamente</div>
+      <div class="punti">15</div>
+    </div>
+    <div class="eval-row">
+      <div class="voce">Qualità della relazione · chiarezza, completezza</div>
+      <div class="punti">15</div>
+    </div>
+    <div class="eval-row total">
+      <div class="voce">Totale</div>
+      <div class="punti">100</div>
+    </div>
+  </div>
+
+  <div class="bonus">
+    <h4>Bonus · fino a 10 punti aggiuntivi</h4>
+    <ul>
+      <li>Aggiungere alla classificazione del regime una <em>nota tecnica</em> sul modello fisico associato: "Bernoulli applicabile", "correzione di Prandtl-Glauert necessaria", "CFD non lineare richiesta".</li>
+      <li>Aggiungere la conversione di <em>q</em> in <code>psf</code> (libbre per piede quadrato), <code>1 psf = 47,88 Pa</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="closing" id="closing">
+  <h2>
+    Non avete imparato<br>
+    solo <em>Python</em>.<br>
+    Avete imparato a<br>
+    <span class="glow">essere ingegneri</span>.
+  </h2>
+
+  <div class="next">
+    <h3>§ Cosa avete imparato davvero</h3>
+    <ul>
+      <li>A <strong>specificare</strong> un problema tecnico in modo non ambiguo — la stessa competenza richiesta per redigere un capitolato professionale.</li>
+      <li>A <strong>validare</strong> il lavoro di terzi — l'IA oggi, un calcolatore strutturale, un fornitore, un software CFD domani.</li>
+      <li>A <strong>documentare</strong> il processo — la relazione è il prototipo di un vero report tecnico.</li>
+      <li>Prossima lezione: <code>for</code> e <code>while</code> applicati al programma di oggi, per generare una tabella ISA completa con passo <code>Δh = 500 m</code>.</li>
+    </ul>
+  </div>
+
+  <p class="motto">
+    In ingegneria,<br>
+    il codice non basta che <span class="a">funzioni</span>.<br>
+    Deve essere <span class="b">difendibile</span>.<br>
+    Davanti a chi vi chiederà:<br>
+    <em>«mi spieghi come ha ottenuto questo risultato?»</em>
+  </p>
+
+  <div class="signature">
+    <div class="left">PROF · ING · BIAGIO RAUCCI · ITIS MAJORANA · CASSINO</div>
+    <div class="right">ESERCITAZIONE INTEGRATA L01–L03 · A.S. 2025/26</div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+/* ============================================================
+   1) LENIS
+   ============================================================ */
+const lenis = new Lenis({
+  duration: 1.4,
+  easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+  smoothWheel: true,
+  wheelMultiplier: 1.0,
+});
+function rafCb(time){ lenis.raf(time); requestAnimationFrame(rafCb); }
+requestAnimationFrame(rafCb);
+lenis.on('scroll', ScrollTrigger.update);
+gsap.ticker.add(time => lenis.raf(time * 1000));
+gsap.ticker.lagSmoothing(0);
+
+/* ============================================================
+   2) THREE.JS shader — stratified atmosphere + cursor warp
+   ============================================================ */
+(() => {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:false, alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  const mouse = {x:0.5, y:0.5}, targetMouse = {x:0.5, y:0.5};
+
+  const uniforms = {
+    uTime:       {value:0},
+    uResolution: {value:new THREE.Vector2(window.innerWidth, window.innerHeight)},
+    uMouse:      {value:new THREE.Vector2(0.5, 0.5)},
+    uScroll:     {value:0},
+  };
+
+  const vertexShader = `void main(){ gl_Position = vec4(position,1.0); }`;
+  const fragmentShader = `
+    precision highp float;
+    uniform float uTime;
+    uniform vec2  uResolution;
+    uniform vec2  uMouse;
+    uniform float uScroll;
+
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+    float noise(vec2 p){
+      vec2 i=floor(p); vec2 f=fract(p);
+      float a=hash(i);
+      float b=hash(i+vec2(1.0,0.0));
+      float c=hash(i+vec2(0.0,1.0));
+      float d=hash(i+vec2(1.0,1.0));
+      vec2 u=f*f*(3.0-2.0*f);
+      return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+    }
+    float fbm(vec2 p){
+      float v=0.0; float a=0.5;
+      for(int i=0;i<5;i++){
+        v += a*noise(p);
+        p = p*2.05; a*=0.5;
+      }
+      return v;
+    }
+
+    void main(){
+      vec2 uv = gl_FragCoord.xy / uResolution.xy;
+      vec2 p  = uv;
+      p.x *= uResolution.x/uResolution.y;
+
+      vec2 m = uMouse;
+      m.x *= uResolution.x/uResolution.y;
+      vec2 toM = m - p;
+      float dM = length(toM);
+
+      float t = uTime*0.06;
+
+      float layers = sin(p.y*8.0 + fbm(p*1.6 + t)*2.2 + uScroll*3.0) * 0.5 + 0.5;
+      layers = pow(layers, 1.4);
+
+      vec2 q;
+      q.x = fbm(p*1.3 + vec2(0.0,t));
+      q.y = fbm(p*1.3 + vec2(5.2,-t*0.9));
+
+      vec2 r;
+      r.x = fbm(p*1.7 + 3.6*q + vec2(1.7,9.2) + t*0.6);
+      r.y = fbm(p*1.7 + 3.6*q + vec2(8.3,2.8) - t*0.4);
+
+      float n = fbm(p*2.0 + 2.8*r);
+
+      float warp = smoothstep(0.0, 0.65, 1.0 - dM*0.85);
+      n += warp*0.16*sin(uTime*0.5 + dM*7.0);
+      n = mix(n, layers, 0.22);
+
+      vec3 c1 = vec3(0.014, 0.034, 0.035);
+      vec3 c2 = vec3(0.02,  0.10,  0.10);
+      vec3 c3 = vec3(0.05,  0.34,  0.30);
+      vec3 c4 = vec3(0.97,  0.78,  0.45);
+
+      vec3 col = mix(c1, c2, smoothstep(0.0,0.55,n));
+      col      = mix(col, c3, smoothstep(0.55,0.85,n));
+      col      = mix(col, c4*0.55, smoothstep(0.85,1.08,n)*warp);
+
+      vec3 glow = vec3(0.42,0.94,0.85) * pow(smoothstep(0.42,0.0,dM), 2.4) * 0.20;
+      col += glow;
+
+      float g = (hash(uv*uResolution.xy + uTime) - 0.5) * 0.045;
+      col += g;
+
+      float v = 1.0 - smoothstep(0.65,1.15,length(uv - 0.5));
+      col *= mix(0.6, 1.0, v);
+
+      col = mix(col, col * vec3(1.05, 0.97, 0.88), uScroll*0.35);
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({vertexShader, fragmentShader, uniforms});
+  const geo = new THREE.PlaneGeometry(2,2);
+  scene.add(new THREE.Mesh(geo, material));
+
+  window.addEventListener('mousemove', e => {
+    targetMouse.x = e.clientX / window.innerWidth;
+    targetMouse.y = 1 - e.clientY / window.innerHeight;
+  });
+  window.addEventListener('touchmove', e => {
+    if(e.touches[0]){
+      targetMouse.x = e.touches[0].clientX / window.innerWidth;
+      targetMouse.y = 1 - e.touches[0].clientY / window.innerHeight;
+    }
+  }, {passive:true});
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+  });
+
+  let scrollNorm = 0;
+  lenis.on('scroll', ({scroll, limit}) => {
+    scrollNorm = limit > 0 ? scroll/limit : 0;
+  });
+
+  const clock = new THREE.Clock();
+  function render(){
+    mouse.x += (targetMouse.x - mouse.x) * 0.06;
+    mouse.y += (targetMouse.y - mouse.y) * 0.06;
+    uniforms.uMouse.value.set(mouse.x, mouse.y);
+    uniforms.uTime.value = clock.getElapsedTime();
+    uniforms.uScroll.value += (scrollNorm - uniforms.uScroll.value) * 0.05;
+    renderer.render(scene, camera);
+    requestAnimationFrame(render);
+  }
+  render();
+})();
+
+/* ============================================================
+   3) KATEX
+   ============================================================ */
+function renderKatex(){
+  document.querySelectorAll('[data-formula]').forEach(el=>{
+    if(el.dataset.rendered) return;
+    try{
+      katex.render(el.dataset.formula, el, {displayMode:true, throwOnError:false});
+      el.dataset.rendered = "true";
+    }catch(e){console.warn(e)}
+  });
+}
+window.addEventListener('load',()=>{
+  const tryRender = () => {
+    if(window.katex){ renderKatex(); }
+    else setTimeout(tryRender, 60);
+  };
+  tryRender();
+});
+
+/* ============================================================
+   4) GSAP ScrollTrigger — cinematic reveals
+   ============================================================ */
+window.addEventListener('load', () => {
+  /* HERO */
+  gsap.from(".hero .eyebrow",{opacity:0,y:20,duration:1.2,delay:0.2,ease:"power3.out"});
+  gsap.from(".hero h1",{opacity:0,y:60,duration:1.4,delay:0.35,ease:"power4.out"});
+  gsap.from(".hero h1 .stamp",{opacity:0,letterSpacing:"0.3em",duration:1.6,delay:0.9,ease:"power3.out"});
+  gsap.from(".hero .sub",{opacity:0,y:24,duration:1.2,delay:0.7,ease:"power3.out"});
+  gsap.from(".hero .meta > div",{opacity:0,y:20,duration:1,delay:1.0,stagger:0.12,ease:"power3.out"});
+
+  /* Section headers */
+  gsap.utils.toArray('.section-head').forEach(head => {
+    const tl = gsap.timeline({
+      scrollTrigger:{ trigger:head, start:"top 78%", toggleActions:"play none none reverse" }
+    });
+    tl.from(head.querySelector('.num'),{opacity:0,y:14,duration:0.7,ease:"power3.out"})
+      .from(head.querySelector('h2'),{opacity:0,y:40,duration:1,ease:"power3.out"},"-=0.4")
+      .from(head.querySelector('.lead'),{opacity:0,y:24,duration:0.9,ease:"power3.out"},"-=0.5");
+  });
+
+  /* Pact */
+  gsap.utils.toArray('.pact').forEach(p => {
+    gsap.from(p.querySelectorAll('.col'),{
+      opacity:0, y:36, duration:0.9, stagger:0.15, ease:"power3.out",
+      scrollTrigger:{trigger:p,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Golden */
+  gsap.utils.toArray('.golden').forEach(g => {
+    gsap.from(g,{
+      opacity:0, x:-30, duration:1, ease:"power3.out",
+      scrollTrigger:{trigger:g,start:"top 85%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Timeline */
+  gsap.utils.toArray('.timeline').forEach(tl => {
+    gsap.from(tl.querySelectorAll('.tl-step'),{
+      opacity:0, y:36, duration:0.8, stagger:0.12, ease:"power3.out",
+      scrollTrigger:{trigger:tl,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Spec cards */
+  gsap.utils.toArray('.spec-box').forEach(s => {
+    gsap.from(s.querySelectorAll('.spec-card'),{
+      opacity:0, y:30, duration:0.9, stagger:0.15, ease:"power3.out",
+      scrollTrigger:{trigger:s,start:"top 85%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Formula box */
+  gsap.from('.formula-box .formulas, .formula-box .constants',{
+    opacity:0, y:30, duration:0.9, stagger:0.2, ease:"power3.out",
+    scrollTrigger:{trigger:'.formula-box',start:"top 82%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.formula',{
+    opacity:0, x:-20, duration:0.7, stagger:0.12, ease:"power3.out",
+    scrollTrigger:{trigger:'.formulas',start:"top 80%",toggleActions:"play none none reverse"}
+  });
+
+  /* Flowchart */
+  gsap.from('.flowchart',{
+    opacity:0, y:30, duration:1, ease:"power3.out",
+    scrollTrigger:{trigger:'.flowchart',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Cases table */
+  gsap.from('.cases-table tbody tr',{
+    opacity:0, x:-20, duration:0.6, stagger:0.08, ease:"power3.out",
+    scrollTrigger:{trigger:'.cases-table',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Ref table */
+  gsap.from('.ref-table tbody tr',{
+    opacity:0, x:-20, duration:0.6, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.ref-table',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.tolerances',{
+    opacity:0, y:24, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.tolerances',start:"top 88%",toggleActions:"play none none reverse"}
+  });
+
+  /* Anatomy 6-grid */
+  gsap.from('.an-cell',{
+    opacity:0, y:30, duration:0.7, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.anatomy',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Translate prompts */
+  gsap.utils.toArray('.translate-prompt').forEach(tp => {
+    gsap.from(tp,{
+      opacity:0, y:36, duration:1, ease:"power3.out",
+      scrollTrigger:{trigger:tp,start:"top 85%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Bad/good prompts */
+  gsap.utils.toArray('.prompts').forEach(p => {
+    gsap.from(p.querySelectorAll('.prompt-card'),{
+      opacity:0, y:36, duration:0.9, stagger:0.18, ease:"power3.out",
+      scrollTrigger:{trigger:p,start:"top 82%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Checklist */
+  gsap.from('.checklist li',{
+    opacity:0, x:-20, duration:0.6, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.checklist',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Code stages */
+  gsap.utils.toArray('.code-stage').forEach(cs => {
+    gsap.from(cs,{
+      opacity:0, y:30, duration:1, ease:"power3.out",
+      scrollTrigger:{trigger:cs,start:"top 85%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Report list */
+  gsap.from('.report-list li',{
+    opacity:0, x:-20, duration:0.6, stagger:0.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.report-list',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+
+  /* Eval grid */
+  gsap.from('.eval-row',{
+    opacity:0, x:-20, duration:0.6, stagger:0.08, ease:"power3.out",
+    scrollTrigger:{trigger:'.eval-grid',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.bonus',{
+    opacity:0, y:24, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.bonus',start:"top 88%",toggleActions:"play none none reverse"}
+  });
+
+  /* Callouts */
+  gsap.utils.toArray('.callout').forEach(c => {
+    gsap.from(c,{
+      opacity:0, x:-24, duration:0.9, ease:"power3.out",
+      scrollTrigger:{trigger:c,start:"top 88%",toggleActions:"play none none reverse"}
+    });
+  });
+
+  /* Closing */
+  gsap.from('.closing h2',{
+    opacity:0, y:40, duration:1.1, ease:"power3.out",
+    scrollTrigger:{trigger:'.closing',start:"top 78%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.closing .next',{
+    opacity:0, y:30, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.closing .next',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.motto',{
+    opacity:0, scale:0.95, duration:1.2, ease:"power3.out",
+    scrollTrigger:{trigger:'.motto',start:"top 85%",toggleActions:"play none none reverse"}
+  });
+  gsap.from('.signature',{
+    opacity:0, y:24, duration:0.9, ease:"power3.out",
+    scrollTrigger:{trigger:'.signature',start:"top 92%",toggleActions:"play none none reverse"}
+  });
+
+  /* Background scrub */
+  gsap.to('body',{
+    backgroundColor:"#080f10",
+    scrollTrigger:{trigger:document.body,start:"top top",end:"bottom bottom",scrub:true}
+  });
+
+  /* Rail + HUD */
+  const sections = [
+    {id:"hero",         label:"00 · INCIPIT"},
+    {id:"obiettivi",    label:"01 · OBIETTIVI"},
+    {id:"regole",       label:"02 · REGOLE"},
+    {id:"specifica",    label:"03 · SPECIFICA"},
+    {id:"formule",      label:"04 · FORMULE"},
+    {id:"flowchart",    label:"05 · FLUSSO"},
+    {id:"casi",         label:"06 · CASI"},
+    {id:"riferimento",  label:"07 · RIFERIMENTO"},
+    {id:"anatomia",     label:"08 · ANATOMIA"},
+    {id:"prompt",       label:"09 · PROMPT"},
+    {id:"cattivi",      label:"10 · COSA NO"},
+    {id:"lettura",      label:"11 · LETTURA"},
+    {id:"bug",          label:"12 · BUG"},
+    {id:"correggere",   label:"13 · CORREGGERE"},
+    {id:"relazione",    label:"14 · RELAZIONE"},
+    {id:"valutazione",  label:"15 · VALUTAZIONE"},
+    {id:"closing",      label:"16 · OLTRE"},
+  ];
+  const railNodes = document.querySelectorAll('.rail .node');
+  const hudSec = document.getElementById('hud-section');
+  const hudPrg = document.getElementById('hud-progress');
+
+  sections.forEach((s) => {
+    ScrollTrigger.create({
+      trigger:`#${s.id}`,
+      start:"top 50%",
+      end:"bottom 50%",
+      onToggle:self => {
+        if(self.isActive){
+          railNodes.forEach(n => n.classList.toggle('active', n.dataset.target === s.id));
+          hudSec.textContent = "SEC · " + s.label;
+        }
+      }
+    });
+  });
+
+  railNodes.forEach(n => {
+    n.addEventListener('click', () => {
+      const t = document.getElementById(n.dataset.target);
+      if(t) lenis.scrollTo(t, {offset:-60, duration:1.4});
+    });
+  });
+
+  lenis.on('scroll', ({progress}) => {
+    hudPrg.textContent = "PRG · " + Math.round(progress*100) + "%";
+  });
+
+  setTimeout(() => ScrollTrigger.refresh(), 600);
+});
+</script>
+
+</body>
+</html>
