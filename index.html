@@ -525,6 +525,7 @@ body {
 .lesson-status.live    { color: var(--success); }
 .lesson-status.planned { color: var(--text-faint); }
 .lesson-status.exercise { color: var(--warn); }
+.lesson-status.lab      { color: var(--accent-2); }
 
 .lesson-toggle {
   font-family: var(--mono);
@@ -1197,7 +1198,7 @@ const LESSONS = [
     topics: ['HTML/CSS/JS', 'Claude.ai', 'GitHub Pages', 'CSS variables'],
     duration: '2 ore',
     students: [
-      { name: 'Campanile Marco',     url: null },
+      { name: 'Campanile Marco',     url: 'https://marcocampanile22-23-arch.github.io/Convertitore-unit-di-misura/' },
       { name: 'Capuano Christian',   url: 'https://christian34jpg.github.io/convertitore/' },
       { name: 'Conte Asia',          url: 'https://asiettaconte-lab.github.io/Convertitore---Conte-Asia/' },
       { name: 'Di Civita Francesco', url: null },
@@ -1331,6 +1332,37 @@ const LESSONS = [
     duration: 'da svolgere a casa',
     students: null,
   },
+  {
+    code: 'LAB. 01',
+    title: 'Profili alari NACA — webapp dal Prompt Perfetto',
+    date: 'laboratorio collegato all\'appunto N. 02',
+    status: 'lab',
+    handout: 'appunti/PromptPerfetto.html',
+    summary: `Laboratorio nato dalla guida <strong>«Il Prompt Perfetto — esperienza
+      estesa»</strong>, nella quale lo studente impara a costruire un prompt
+      strutturato per generare una web app sui <strong>profili alari NACA a
+      quattro cifre</strong>. Ognuno ha applicato la metodologia al proprio caso,
+      verificando che il codice generato rispettasse le specifiche e
+      pubblicando il risultato su GitHub Pages. Il filo conduttore è che
+      <em>la qualità del prodotto è figlia della qualità della richiesta</em>:
+      stesso strumento, stessa classe, undici esiti diversi che rispecchiano
+      undici modi di dialogare con l'IA.`,
+    topics: ['Profili NACA 4 cifre', 'Prompt engineering', 'Visualizzazione 2D', 'GitHub Pages'],
+    duration: 'lavoro autonomo',
+    students: [
+      { name: 'Campanile Marco',     url: 'https://marcocampanile22-23-arch.github.io/NACA/' },
+      { name: 'Capuano Christian',   url: 'https://christian22jpg.github.io/NACA/' },
+      { name: 'Conte Asia',          url: 'https://asiettaconte-lab.github.io/NACA-2412/' },
+      { name: 'Di Civita Francesco', url: null },
+      { name: 'Di Martino Nicolò',   url: 'https://dimartinonicolo22-23-bot.github.io/NACA/' },
+      { name: 'Evangelista Giacomo', url: 'https://giacomo-0099.github.io/Profili-NACA/' },
+      { name: 'Ezzaroùali Imad',     url: null },
+      { name: 'Merucci Alessandro',  url: 'https://meruccialessandro22-23-design.github.io/NACA/' },
+      { name: 'Pagliari Eleonora',   url: 'https://el3m4nat1-sys.github.io/NACA4C/' },
+      { name: 'Pellecchia Sergio',   url: 'https://crow-brawl.github.io/NACA/' },
+      { name: 'Vettese Giacomo',     url: null },
+    ],
+  },
 ];
 
 /* =========================================================
@@ -1353,17 +1385,18 @@ function renderLessons() {
     // Apriamo di default solo la prima lezione "live"
     if (idx === 0 && lez.status === 'live') article.classList.add('open');
 
-    // Etichetta di stato: tre varianti (live · planned · exercise)
+    // Etichetta di stato: quattro varianti (live · planned · exercise · lab)
     const statusLabels = {
       live:     '● online',
       planned:  '○ planned',
       exercise: '◆ esercitazione',
+      lab:      '▲ laboratorio',
     };
     const statusLabel = statusLabels[lez.status] || '○ planned';
 
     // Selezione del renderer in base allo stato
     let bodyHtml;
-    if (lez.status === 'live') {
+    if (lez.status === 'live' || lez.status === 'lab') {
       bodyHtml = renderLessonBody(lez, liveCount, pendingCount);
     } else if (lez.status === 'exercise') {
       bodyHtml = renderExerciseBody(lez);
